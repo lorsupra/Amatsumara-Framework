@@ -1,0 +1,27 @@
+# Build artifacts
+target/
+*.so.dSYM/
+
+# Cargo lock files from individual modules (workspace lock is in root)
+modules/**/Cargo.lock
+modules/**/target/
+
+# Console history
+.amatsumara_history
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Session data
+/tmp/amatsumara_sessions/
+
+# Stub/incomplete exploit modules (kept locally for development)
+exploits_stubs/

@@ -1,0 +1,18 @@
+[package]
+name = "amatsumara-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+kanayago = { path = "../kanayago" }
+amatsumara-api = { path = "../amatsumara-api" }
+thiserror.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+async-trait.workspace = true
+tokio.workspace = true
+log.workspace = true
+libloading.workspace = true

@@ -1,0 +1,10 @@
+[package]
+name = "pattern-create"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+kanayago = { path = "../kanayago" }
+clap.workspace = true

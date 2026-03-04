@@ -22,7 +22,7 @@ Amatsumara is a penetration testing framework that provides a Metasploit-like ex
 
 | | Count |
 |---|---|
-| Exploit Modules | 62 |
+| Exploit Modules | 78 |
 | Auxiliary Modules | 16 |
 | Post-Exploitation Modules | 2 |
 | Payload Generators | 9 |

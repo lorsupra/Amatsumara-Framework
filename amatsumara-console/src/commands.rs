@@ -35,15 +35,55 @@ impl<'a> CommandHandler<'a> {
             args.join(" ")
         };
 
-        // Validate module exists
-        if !self.ctx.loaded_modules.contains_key(&module_path) {
-            return Err(anyhow!("Module not found: {}. Use 'search' to find modules.", module_path));
+        // Exact match first
+        if self.ctx.loaded_modules.contains_key(&module_path) {
+            println!("{} module: {}", "Selected".bright_green(), module_path.bright_cyan());
+            self.ctx.select_module(module_path);
+            return Ok(());
         }
 
-        println!("{} module: {}", "Selected".bright_green(), module_path.bright_cyan());
-        self.ctx.select_module(module_path);
+        // Fuzzy match: case-insensitive substring search on module names
+        let search_lower = module_path.to_lowercase();
+        // Also match against directory-style names by replacing underscores/hyphens
+        let search_normalized = search_lower.replace('-', "_");
+        let mut matches: Vec<String> = Vec::new();
 
-        Ok(())
+        for name in self.ctx.loaded_modules.keys() {
+            let name_lower = name.to_lowercase();
+            // Also check against the .so file path for directory-name matching
+            let path_name = self.ctx.loaded_modules.get(name)
+                .map(|m| m.path().file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("")
+                    .trim_start_matches("lib")
+                    .to_lowercase())
+                .unwrap_or_default();
+
+            if name_lower.contains(&search_lower) ||
+               path_name.contains(&search_normalized) ||
+               path_name.contains(&search_lower) {
+                matches.push(name.clone());
+            }
+        }
+
+        match matches.len() {
+            0 => Err(anyhow!("Module not found: {}. Use 'search' to find modules.", module_path)),
+            1 => {
+                let name = matches.into_iter().next().unwrap();
+                println!("{} module: {}", "Selected".bright_green(), name.bright_cyan());
+                self.ctx.select_module(name);
+                Ok(())
+            }
+            _ => {
+                matches.sort();
+                println!("{} Multiple modules match '{}':", "Info:".bright_yellow(), module_path);
+                for (i, name) in matches.iter().enumerate() {
+                    println!("  {} {}", format!("{}.", i).bright_blue(), name.bright_green());
+                }
+                println!("\nUse a more specific name, or 'search' then 'use <number>'.");
+                Ok(())
+            }
+        }
     }
 
     /// Set command - set a module option

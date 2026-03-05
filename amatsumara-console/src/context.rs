@@ -75,15 +75,13 @@ impl ConsoleContext {
 
     /// Get the short module type for prompt
     fn get_module_type_short(&self) -> String {
-        if let Some(ref module_path) = self.current_module {
-            if module_path.contains("/exploit") || module_path.starts_with("exploit/") {
-                return "exploit".to_string();
-            } else if module_path.contains("/auxiliary") || module_path.starts_with("auxiliary/") {
-                return "auxiliary".to_string();
-            } else if module_path.contains("/post") || module_path.starts_with("post/") {
-                return "post".to_string();
-            } else if module_path.contains("/payload") || module_path.starts_with("payload/") {
-                return "payload".to_string();
+        if let Some(module) = self.get_current_module() {
+            match module.module_type() {
+                amatsumara_core::ModuleType::Exploit => return "exploit".to_string(),
+                amatsumara_core::ModuleType::Auxiliary => return "auxiliary".to_string(),
+                amatsumara_core::ModuleType::Post => return "post".to_string(),
+                amatsumara_core::ModuleType::Payload => return "payload".to_string(),
+                _ => {}
             }
         }
         "module".to_string()

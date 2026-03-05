@@ -352,7 +352,7 @@ Amatsumara-Framework/
 Modules are compiled as `cdylib` shared libraries (`.so` files). At startup, the framework:
 
 1. Scans the `modules/` directory tree recursively for `.so` files
-2. Loads each library and calls `msf_module_init()` to get the module's VTable
+2. Loads each library and calls `amatsumara_module_init()` to get the module's VTable
 3. Reads module metadata (name, type, options, platforms, etc.) via the C FFI
 4. Indexes modules by name for search and selection
 
@@ -475,7 +475,7 @@ extern "C" fn run(_instance: *mut c_void, config: *const c_char) -> c_int {
 
 // Entry point - the framework calls this to get the VTable
 #[no_mangle]
-pub extern "C" fn msf_module_init() -> *const ModuleVTable { &VTABLE }
+pub extern "C" fn amatsumara_module_init() -> *const ModuleVTable { &VTABLE }
 ```
 
 ### Build and Deploy

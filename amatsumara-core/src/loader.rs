@@ -28,8 +28,8 @@ impl DynamicModule {
 
         // Get the module initialization function
         let init_fn: Symbol<extern "C" fn() -> *const ModuleVTable> = library
-            .get(b"msf_module_init")
-            .map_err(|e| anyhow!("Module missing msf_module_init function: {}", e))?;
+            .get(b"amatsumara_module_init")
+            .map_err(|e| anyhow!("Module missing amatsumara_module_init function: {}", e))?;
 
         // Call the initialization function to get the vtable
         let vtable_ptr = init_fn();

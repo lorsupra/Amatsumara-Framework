@@ -238,30 +238,21 @@ extern "C" fn run(instance: *mut c_void, options_json: *const c_char) -> c_int {
     if !options_json.is_null() {
         let c_str = unsafe { CStr::from_ptr(options_json) };
         if let Ok(json_str) = c_str.to_str() {
-            for line in json_str.split(',') {
-                let parts: Vec<&str> = line.split(':').collect();
-                if parts.len() == 2 {
-                    let key = parts[0].trim().trim_matches(|c| c == '{' || c == '"' || c == '}');
-                    let value = parts[1].trim().trim_matches(|c| c == '"' || c == '}');
-
-                    match key {
-                        "RHOSTS" => module.rhost = value.to_string(),
-                        "RPORT" => {
-                            if let Ok(port) = value.parse::<u16>() {
-                                module.rport = port;
-                            }
-                        }
-                        "SSL" => {
-                            module.ssl = value.eq_ignore_ascii_case("true");
-                        }
-                        "VHOST" => module.vhost = value.to_string(),
-                        "THREADS" => {
-                            if let Ok(threads) = value.parse::<usize>() {
-                                module.threads = threads;
-                            }
-                        }
-                        _ => {}
-                    }
+            if let Ok(opts) = serde_json::from_str::<serde_json::Value>(json_str) {
+                if let Some(v) = opts.get("RHOSTS").and_then(|v| v.as_str()) {
+                    module.rhost = v.to_string();
+                }
+                if let Some(v) = opts.get("RPORT").and_then(|v| v.as_str()) {
+                    if let Ok(p) = v.parse::<u16>() { module.rport = p; }
+                }
+                if let Some(v) = opts.get("SSL").and_then(|v| v.as_str()) {
+                    module.ssl = v.eq_ignore_ascii_case("true");
+                }
+                if let Some(v) = opts.get("VHOST").and_then(|v| v.as_str()) {
+                    module.vhost = v.to_string();
+                }
+                if let Some(v) = opts.get("THREADS").and_then(|v| v.as_str()) {
+                    if let Ok(t) = v.parse::<usize>() { module.threads = t; }
                 }
             }
         }
@@ -284,6 +275,6 @@ static VTABLE: ModuleVTable = ModuleVTable {
 };
 
 #[no_mangle]
-pub extern "C" fn msf_module_init() -> *const ModuleVTable {
+pub extern "C" fn amatsumara_module_init() -> *const ModuleVTable {
     &VTABLE
 }

@@ -86,4 +86,4 @@ extern "C" fn run(_instance: *mut c_void, _options_json: *const c_char) -> c_int
 static VTABLE: ModuleVTable = ModuleVTable { get_info, init, destroy, check: None, run };
 
 #[no_mangle]
-pub extern "C" fn msf_module_init() -> *const ModuleVTable { &VTABLE }
+pub extern "C" fn amatsumara_module_init() -> *const ModuleVTable { &VTABLE }

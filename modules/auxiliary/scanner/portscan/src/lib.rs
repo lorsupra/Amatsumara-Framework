@@ -180,23 +180,15 @@ extern "C" fn run(instance: *mut c_void, options_json: *const c_char) -> c_int {
     if !options_json.is_null() {
         let c_str = unsafe { CStr::from_ptr(options_json) };
         if let Ok(json_str) = c_str.to_str() {
-            // Simple JSON parsing for RHOSTS, PORTS, TIMEOUT
-            for line in json_str.split(',') {
-                let parts: Vec<&str> = line.split(':').collect();
-                if parts.len() == 2 {
-                    let key = parts[0].trim().trim_matches(|c| c == '{' || c == '"' || c == '}');
-                    let value = parts[1].trim().trim_matches(|c| c == '"' || c == '}');
-
-                    match key {
-                        "RHOSTS" => module.rhost = value.to_string(),
-                        "PORTS" => module.ports = value.to_string(),
-                        "TIMEOUT" => {
-                            if let Ok(timeout) = value.parse::<u64>() {
-                                module.timeout_ms = timeout;
-                            }
-                        }
-                        _ => {}
-                    }
+            if let Ok(opts) = serde_json::from_str::<serde_json::Value>(json_str) {
+                if let Some(v) = opts.get("RHOSTS").and_then(|v| v.as_str()) {
+                    module.rhost = v.to_string();
+                }
+                if let Some(v) = opts.get("PORTS").and_then(|v| v.as_str()) {
+                    module.ports = v.to_string();
+                }
+                if let Some(v) = opts.get("TIMEOUT").and_then(|v| v.as_str()) {
+                    if let Ok(t) = v.parse::<u64>() { module.timeout_ms = t; }
                 }
             }
         }
@@ -221,6 +213,6 @@ static VTABLE: ModuleVTable = ModuleVTable {
 };
 
 #[no_mangle]
-pub extern "C" fn msf_module_init() -> *const ModuleVTable {
+pub extern "C" fn amatsumara_module_init() -> *const ModuleVTable {
     &VTABLE
 }

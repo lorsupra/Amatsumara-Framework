@@ -55,24 +55,23 @@ extern "C" fn run(instance: *mut c_void, options_json: *const c_char) -> c_int {
     if !options_json.is_null() {
         let c_str = unsafe { CStr::from_ptr(options_json) };
         if let Ok(json_str) = c_str.to_str() {
-            for line in json_str.split(',') {
-                let parts: Vec<&str> = line.split(':').collect();
-                if parts.len() == 2 {
-                    let key = parts[0].trim().trim_matches(|c| c == '{' || c == '"' || c == '}');
-                    let value = parts[1].trim().trim_matches(|c| c == '"' || c == '}');
-                    match key {
-                        "RHOSTS" => module.rhost = value.to_string(),
-                        "RPORT" => { if let Ok(p) = value.parse::<u16>() { module.rport = p; }}
-                        "TIMEOUT" => { if let Ok(t) = value.parse::<u64>() { module.timeout = t; }}
-                        _ => {}
-                    }
+            if let Ok(opts) = serde_json::from_str::<serde_json::Value>(json_str) {
+                if let Some(v) = opts.get("RHOSTS").and_then(|v| v.as_str()) {
+                    module.rhost = v.to_string();
+                }
+                if let Some(v) = opts.get("RPORT").and_then(|v| v.as_str()) {
+                    if let Ok(p) = v.parse::<u16>() { module.rport = p; }
+                }
+                if let Some(v) = opts.get("TIMEOUT").and_then(|v| v.as_str()) {
+                    if let Ok(t) = v.parse::<u64>() { module.timeout = t; }
                 }
             }
         }
     }
+
     if module.rhost.is_empty() { return -1; }
     tokio::runtime::Runtime::new().unwrap().block_on(module.run_scan())
 }
 static VTABLE: ModuleVTable = ModuleVTable { get_info, init, destroy, check: None, run };
 #[no_mangle]
-pub extern "C" fn msf_module_init() -> *const ModuleVTable { &VTABLE }
+pub extern "C" fn amatsumara_module_init() -> *const ModuleVTable { &VTABLE }

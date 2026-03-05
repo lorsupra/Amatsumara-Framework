@@ -8,4 +8,5 @@ crate-type = ["cdylib"]
 
 [dependencies]
 amatsumara-api = { path = "../../../../../amatsumara-api" }
+serde_json = "1.0"
 tokio = { version = "1", features = ["full"] }

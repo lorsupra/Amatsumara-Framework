@@ -207,7 +207,7 @@ pub mod session_channel;
 macro_rules! register_module {
     ($info:expr, $vtable:expr) => {
         #[no_mangle]
-        pub extern "C" fn msf_module_init() -> *const $crate::ModuleVTable {
+        pub extern "C" fn amatsumara_module_init() -> *const $crate::ModuleVTable {
             &$vtable as *const $crate::ModuleVTable
         }
     };

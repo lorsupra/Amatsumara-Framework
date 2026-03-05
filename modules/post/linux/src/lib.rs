@@ -148,4 +148,4 @@ fn parse_options(config: *const c_char) -> Result<PostOptions, Box<dyn std::erro
 }
 
 #[no_mangle]
-pub extern "C" fn msf_module_init() -> *const ModuleVTable { &VTABLE }
+pub extern "C" fn amatsumara_module_init() -> *const ModuleVTable { &VTABLE }

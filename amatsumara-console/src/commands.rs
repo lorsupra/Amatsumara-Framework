@@ -879,8 +879,8 @@ impl<'a> CommandHandler<'a> {
                 if sess.has_output() {
                     let outputs = sess.read_output();
                     for output in outputs {
-                        // Display output in a distinct color (dimmed white/gray)
-                        println!("{}", output.bright_black());
+                        // Display output in white for readability on dark backgrounds
+                        println!("{}", output.white());
                     }
                     waiting_for_input = true;
                 }

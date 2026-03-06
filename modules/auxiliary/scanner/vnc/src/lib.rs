@@ -17,7 +17,7 @@ static RHOSTS_DEFAULT: &str = "";
 
 static RPORT_NAME: &str = "RPORT";
 static RPORT_DESC: &str = "VNC port";
-static RPORT_DEFAULT: &str = "23";
+static RPORT_DEFAULT: &str = "5900";
 
 static TIMEOUT_NAME: &str = "TIMEOUT";
 static TIMEOUT_DESC: &str = "Connection timeout in seconds";

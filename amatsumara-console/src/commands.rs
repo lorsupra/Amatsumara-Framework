@@ -1,8 +1,12 @@
+use amatsumara_core::session_api::{CommandResult, SessionApi, SessionHandle};
 use anyhow::{anyhow, Result};
+use chrono::{DateTime, Local};
 use colored::Colorize;
 use crate::context::ConsoleContext;
 use std::ffi::CString;
-use chrono::{DateTime, Local};
+use std::os::raw::{c_char, c_int};
+use std::sync::atomic::{AtomicPtr, Ordering};
+use std::ptr;
 
 fn term_width() -> usize {
     terminal_size::terminal_size()
@@ -76,6 +80,106 @@ fn wrap_name(name: &str, max_width: usize) -> Vec<String> {
         wrap_path(name, max_width)
     }
 }
+
+// --- Session API trampoline infrastructure ---
+//
+// These extern "C" functions are called by post modules via the SessionApi
+// function pointer table. They bridge the FFI boundary back into the framework's
+// SessionManager. A raw pointer to the SessionManager is stored in an AtomicPtr
+// and set before each run() call.
+
+static SESSION_MGR_PTR: AtomicPtr<amatsumara_core::SessionManager> =
+    AtomicPtr::new(ptr::null_mut());
+
+/// The SessionApi instance whose pointers we pass to modules.
+/// Lives for the duration of the process; function pointers are stable.
+static SESSION_API_INSTANCE: SessionApi = SessionApi {
+    exec_cmd: trampoline_exec_cmd,
+    free_result: trampoline_free_result,
+    session_alive: trampoline_session_alive,
+};
+
+extern "C" fn trampoline_exec_cmd(
+    session_id: SessionHandle,
+    command: *const c_char,
+    timeout_ms: u32,
+) -> CommandResult {
+    let mgr_ptr = SESSION_MGR_PTR.load(Ordering::Acquire);
+    if mgr_ptr.is_null() || command.is_null() {
+        return CommandResult {
+            output: ptr::null(),
+            output_len: 0,
+            status: -1,
+        };
+    }
+
+    let mgr = unsafe { &*mgr_ptr };
+    let cmd_str = match unsafe { std::ffi::CStr::from_ptr(command) }.to_str() {
+        Ok(s) => s,
+        Err(_) => {
+            return CommandResult {
+                output: ptr::null(),
+                output_len: 0,
+                status: -2,
+            };
+        }
+    };
+
+    let timeout = if timeout_ms == 0 {
+        std::time::Duration::from_secs(10)
+    } else {
+        std::time::Duration::from_millis(timeout_ms as u64)
+    };
+
+    match mgr.exec_blocking(session_id, cmd_str, timeout) {
+        Ok(output) => {
+            let bytes = output.into_bytes();
+            let len = bytes.len();
+            let boxed = bytes.into_boxed_slice();
+            let ptr = Box::into_raw(boxed) as *const c_char;
+            CommandResult {
+                output: ptr,
+                output_len: len,
+                status: 0,
+            }
+        }
+        Err(_) => CommandResult {
+            output: ptr::null(),
+            output_len: 0,
+            status: -3,
+        },
+    }
+}
+
+extern "C" fn trampoline_free_result(result: *mut CommandResult) {
+    if result.is_null() {
+        return;
+    }
+    let result_ref = unsafe { &mut *result };
+    if !result_ref.output.is_null() && result_ref.output_len > 0 {
+        // Reconstruct the Box<[u8]> and drop it
+        unsafe {
+            let slice = std::slice::from_raw_parts_mut(
+                result_ref.output as *mut u8,
+                result_ref.output_len,
+            );
+            let _ = Box::from_raw(slice as *mut [u8]);
+        }
+        result_ref.output = ptr::null();
+        result_ref.output_len = 0;
+    }
+}
+
+extern "C" fn trampoline_session_alive(session_id: SessionHandle) -> c_int {
+    let mgr_ptr = SESSION_MGR_PTR.load(Ordering::Acquire);
+    if mgr_ptr.is_null() {
+        return 0;
+    }
+    let mgr = unsafe { &*mgr_ptr };
+    if mgr.is_alive(session_id) { 1 } else { 0 }
+}
+
+// --- End trampoline infrastructure ---
 
 pub struct CommandHandler<'a> {
     ctx: &'a mut ConsoleContext,
@@ -749,6 +853,13 @@ impl<'a> CommandHandler<'a> {
         let init_fn = vtable.init;
         let destroy_fn = vtable.destroy;
         let module_name = module_path.clone();
+
+        // Inject session API into the module (if it supports it).
+        // Set the global SessionManager pointer so trampoline functions work.
+        let mgr_ptr = &self.ctx.session_manager as *const amatsumara_core::SessionManager
+            as *mut amatsumara_core::SessionManager;
+        SESSION_MGR_PTR.store(mgr_ptr, Ordering::Release);
+        module.inject_session_api(&SESSION_API_INSTANCE as *const SessionApi);
 
         if background {
             // Background execution

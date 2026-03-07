@@ -8,7 +8,9 @@
 use std::os::raw::{c_char, c_int};
 
 /// API version - modules must match this to be loaded
-pub const MODULE_API_VERSION: u32 = 1;
+/// v1: initial FFI interface
+/// v2: session interaction API (SessionApi, register_post_module!)
+pub const MODULE_API_VERSION: u32 = 2;
 
 /// Module types
 #[repr(C)]
@@ -202,6 +204,9 @@ pub use std::ffi::c_void;
 
 // Session channel for module-framework communication
 pub mod session_channel;
+
+// Session interaction API for post-exploitation modules
+pub mod session_api;
 
 /// Macro to implement module registration
 #[macro_export]

@@ -3,9 +3,10 @@
 ///! Loads modules from .so files at runtime using libloading.
 ///! Provides a safe wrapper around the C FFI interface.
 
+use amatsumara_api::session_api::SessionApi;
+use amatsumara_api::{ModuleVTable, MODULE_API_VERSION};
 use anyhow::{anyhow, Result};
 use libloading::{Library, Symbol};
-use amatsumara_api::{ModuleVTable, MODULE_API_VERSION};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -46,9 +47,9 @@ impl DynamicModule {
         }
 
         let info = &*info_ptr;
-        if info.api_version != MODULE_API_VERSION {
+        if info.api_version == 0 || info.api_version > MODULE_API_VERSION {
             return Err(anyhow!(
-                "Module API version mismatch: expected {}, got {}",
+                "Module API version mismatch: framework supports 1-{}, module has {}",
                 MODULE_API_VERSION,
                 info.api_version
             ));
@@ -89,6 +90,30 @@ impl DynamicModule {
     /// Get the vtable for direct access
     pub fn vtable(&self) -> &'static ModuleVTable {
         self.vtable
+    }
+
+    /// Inject the session API into this module if it exports `amatsumara_set_session_api`.
+    ///
+    /// Returns true if the symbol was found and called, false if not exported.
+    /// Modules that don't need session access simply don't export the symbol.
+    pub fn inject_session_api(&self, api: *const SessionApi) -> bool {
+        type SetSessionApiFn = extern "C" fn(*const SessionApi);
+
+        let result: Result<Symbol<SetSessionApiFn>, _> = unsafe {
+            self._library.get(b"amatsumara_set_session_api")
+        };
+
+        match result {
+            Ok(set_fn) => {
+                set_fn(api);
+                log::debug!("Injected session API into module: {}", self.name());
+                true
+            }
+            Err(_) => {
+                log::debug!("Module {} does not export amatsumara_set_session_api (ok)", self.name());
+                false
+            }
+        }
     }
 }
 

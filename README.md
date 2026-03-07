@@ -23,7 +23,7 @@ Amatsumara is a penetration testing framework built for performance and safety. 
 | Exploit Modules | 6 |
 | Auxiliary Modules | 18 |
 | Utility Modules | 1 |
-| Post-Exploitation Modules | 2 |
+| Post-Exploitation Modules | 1 |
 | Payload Generators | 9 |
 
 > **[Module Documentation](docs/MODULES.md)** — detailed options, usage examples, caveats, and references for every exploit and auxiliary module.
@@ -34,6 +34,7 @@ Amatsumara is a penetration testing framework built for performance and safety. 
 - **AutoLHOST** -- automatic VPN interface detection (tun0/tap0)
 - **Tab Completion** -- commands, module names, options, subcommands
 - **Session Management** -- open, background, interact, kill sessions across targets
+- **Session Interaction API** -- post modules execute commands remotely through sessions via `session_exec()`
 - **Background Jobs** -- run listeners in the background with `-j`
 - **Global Options** -- `setg LHOST` once, applies everywhere
 - **Numbered Search** -- `search` results are numbered for quick `use 0` selection
@@ -206,6 +207,8 @@ Amatsumara-Framework/
 ### Sessions
 
 Exploit modules open TCP connections and write session metadata to `/tmp/amatsumara_sessions/`. The console takes ownership of the stream. Sessions persist independently -- background, interact later, or kill.
+
+Post-exploitation modules operate through these sessions via the Session Interaction API. The framework injects C function pointers into the module before `run()`, allowing it to call `session_exec()` to execute commands on the remote target and read output back. Post modules declare a `SESSION` option to specify which session to use. See [Module Documentation](docs/MODULES.md) for details on the trampoline architecture and `register_post_module!` macro.
 
 ---
 

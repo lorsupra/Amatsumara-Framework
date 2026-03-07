@@ -34,9 +34,15 @@ async fn main() -> Result<()> {
     let mut utility_count = 0;
 
     // Build module map indexed by name and count by type
+    // Duplicate .so files discovered from overlapping search paths are
+    // deduplicated by name — only the first instance is counted.
     let mut loaded_modules = std::collections::HashMap::new();
     for module in modules {
         let name = module.name();
+
+        if loaded_modules.contains_key(&name) {
+            continue;
+        }
 
         // Count by type
         match module.module_type() {

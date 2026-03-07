@@ -2,9 +2,11 @@
 ///!
 ///! Manages active sessions (shells, meterpreter, etc.) from successful exploits
 
+use amatsumara_api::session_api::SESSION_OUTPUT_SENTINEL;
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
@@ -185,6 +187,63 @@ impl SessionManager {
     /// Get count of active sessions
     pub fn count(&self) -> usize {
         self.sessions.lock().unwrap().len()
+    }
+
+    /// Check if a session exists and its channel is still open
+    pub fn is_alive(&self, id: SessionId) -> bool {
+        self.sessions.lock().unwrap().contains_key(&id)
+    }
+
+    /// Execute a command on a session and wait for output using a sentinel.
+    ///
+    /// Sends the command followed by `echo __AMATSUMARA_DONE__`, then collects
+    /// output lines until the sentinel appears or the timeout expires.
+    /// This is a blocking call intended to be used from `spawn_blocking`.
+    pub fn exec_blocking(
+        &self,
+        session_id: SessionId,
+        command: &str,
+        timeout: Duration,
+    ) -> Result<String> {
+        let session = self.get(session_id)
+            .ok_or_else(|| anyhow!("Session {} not found", session_id))?;
+
+        let sess = session.lock().unwrap();
+
+        // Drain any stale output
+        let _ = sess.read_output();
+
+        // Send the actual command
+        sess.send_command(command)?;
+
+        // Send sentinel command so we know when output is done
+        sess.send_command(format!("echo {}", SESSION_OUTPUT_SENTINEL))?;
+
+        drop(sess); // Release lock while waiting
+
+        let start = Instant::now();
+        let mut output_lines = Vec::new();
+
+        loop {
+            std::thread::sleep(Duration::from_millis(50));
+
+            let sess = session.lock().unwrap();
+            let new_lines = sess.read_output();
+            drop(sess);
+
+            for line in new_lines {
+                if line.contains(SESSION_OUTPUT_SENTINEL) {
+                    // Sentinel found — we have all the output
+                    return Ok(output_lines.join("\n"));
+                }
+                output_lines.push(line);
+            }
+
+            if start.elapsed() > timeout {
+                // Timed out — return whatever we collected
+                return Ok(output_lines.join("\n"));
+            }
+        }
     }
 }
 

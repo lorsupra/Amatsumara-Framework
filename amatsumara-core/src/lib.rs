@@ -31,3 +31,6 @@ pub use amatsumara_api::session_channel::{init_session_channel, init_session_cha
 
 // Re-export ModuleType from API
 pub use amatsumara_api::ModuleType;
+
+// Re-export session interaction API types for console use
+pub use amatsumara_api::session_api;

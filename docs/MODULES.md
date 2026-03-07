@@ -865,6 +865,156 @@ Prints the VNC protocol version string (e.g., `RFB 003.008`). No authentication 
 
 ---
 
+## Post
+
+Post-exploitation modules operate through existing sessions to perform privilege escalation, credential gathering, enumeration, and other post-compromise activities on compromised targets. All post modules use the Session Interaction API (see below) to execute commands remotely over established sessions.
+
+### PwnKit Local Privilege Escalation — `pwnkit_lpe`
+> CVE-2021-4034 | CVSS 7.8 | polkit pkexec all versions from May 2009 (commit c8c3d83) through January 2022 patches
+
+**Summary**
+Local privilege escalation via an out-of-bounds write in polkit's pkexec utility. When pkexec is execve()'d with argc=0, it reads argv[1] out-of-bounds from envp[0], passes it to g_find_program_in_path(), then writes the resolved full path back out-of-bounds — overwriting the first environment variable. This allows re-introduction of the GCONV_PATH variable, which causes iconv to load an attacker-controlled shared library that executes setuid(0) + /bin/sh. The module stages, compiles, and executes the exploit chain autonomously through an active session using the Session Interaction API — all commands run on the remote target, not locally.
+
+This module uses the `register_post_module!` macro and the Session Interaction API to execute every operation (pre-flight checks, file staging, compilation, exploit execution, and cleanup) remotely via `session_exec()`. Files are transferred to the target using base64 encoding to avoid shell escaping issues with embedded C source code.
+
+**Options**
+| Option | Default | Required | Description |
+|--------|---------|----------|-------------|
+| SESSION | 1 | Yes | Session ID to run on (must be an active shell session) |
+| WRITEABLE_DIR | /tmp | No | Writable directory on the remote target to stage exploit files |
+| CLEANUP | true | No | Remove staged files after execution |
+
+**Usage**
+```
+use post/linux/pwnkit_lpe
+set SESSION 1
+strike
+```
+
+**Expected Output**
+```
+[*] PwnKit LPE (CVE-2021-4034)
+[*] Polkit pkexec local privilege escalation
+[*] Operating via session 1
+
+[*] Step 1: Pre-flight checks
+[+] pkexec found: -rwsr-xr-x 1 root root 31032 ... /usr/bin/pkexec
+[+] pkexec has SUID bit set
+[*] polkit version: pkexec version 0.105
+[+] Compiler found: gcc
+[+] Write access confirmed: /tmp
+
+[*] Step 2: Staging exploit files to /tmp
+[+] Staged evil-so.c
+[+] Staged exploit.c
+[+] Created GCONV_PATH=. trigger directory
+[+] Staged gconv-modules config in pwnkit/
+
+[*] Step 3: Compiling exploit
+[+] Compiled evil shared library (pwnkit/pwnkit.so)
+[+] Compiled exploit binary (pwnkit_exploit)
+
+[*] Step 4: Executing exploit
+[+] Privilege escalation successful! Root shell obtained.
+[+] uid=0(root) gid=0(root) groups=0(root)
+[+] Current session now has root privileges.
+
+[*] Step 5: Cleaning up staged files
+[*] Cleanup complete.
+```
+
+**Caveats**
+- Requires an active shell session (SESSION option). The module executes all commands remotely via the Session Interaction API — it does not run anything locally.
+- Requires gcc or cc on the target system for compilation. If no compiler is available, the module aborts.
+- The exploit leaves traces in system logs: "The value for the SHELL variable was not found in /etc/shells" — this is inherent to the Qualys-documented exploitation path.
+- The evil shared library's gconv_init() self-cleans GCONV_PATH=. and pwnkit/ directories before dropping to a root shell, restoring a proper PATH.
+- Only works on unpatched systems: Ubuntu policykit-1 < 0.105-26ubuntu1.2, Debian polkit < 0.117-3, Fedora polkit < 0.115-13, and equivalent versions on other distributions.
+- pkexec must exist at /usr/bin/pkexec and have the SUID bit set.
+- File contents (C source code) are base64-encoded before transfer to avoid shell metacharacter issues.
+
+**References**
+- NVD: https://nvd.nist.gov/vuln/detail/CVE-2021-4034
+- Qualys advisory: https://www.qualys.com/2022/01/25/cve-2021-4034/pwnkit.txt
+- TryHackMe room: https://tryhackme.com/room/pwnkit
+
+---
+
+## Session Interaction API
+
+The Session Interaction API allows post-exploitation modules (.so files) to execute commands on remote targets through established framework sessions. This is the mechanism that connects post modules to the session management system across the FFI boundary.
+
+### Architecture
+
+Modules are loaded as `.so` shared libraries via `dlopen`. Static variables in `.so` files are duplicated from the main process — they do not share memory. This means a module cannot directly access the framework's `SessionManager`. The Session Interaction API solves this with a **trampoline pattern**:
+
+1. The framework defines a `SessionApi` struct containing C function pointers (`exec_cmd`, `free_result`, `session_alive`).
+2. Before calling a module's `run()`, the framework looks up an optional export `amatsumara_set_session_api` in the `.so` via `dlsym`.
+3. If found, it passes a pointer to the framework-owned `SessionApi` instance. The module stores this pointer in an `AtomicPtr`.
+4. During `run()`, the module calls the function pointers to execute commands. These pointers are trampolines back into the framework binary, where they have full access to `SessionManager`.
+5. The module never owns the API — it borrows a pointer for the duration of `run()`.
+
+Modules that do not export `amatsumara_set_session_api` are silently skipped — no injection occurs, and existing modules are unaffected.
+
+### API Types (amatsumara-api/src/session_api.rs)
+
+```rust
+#[repr(C)]
+pub struct SessionApi {
+    pub exec_cmd: extern "C" fn(session_id: u32, command: *const c_char, timeout_ms: u32) -> CommandResult,
+    pub free_result: extern "C" fn(result: *mut CommandResult),
+    pub session_alive: extern "C" fn(session_id: u32) -> c_int,
+}
+
+#[repr(C)]
+pub struct CommandResult {
+    pub output: *const c_char,
+    pub output_len: usize,
+    pub status: c_int,  // 0 = success
+}
+```
+
+### Convenience Functions
+
+- `session_exec(api, session_id, command, timeout_ms) -> Result<String, &str>` — execute a command and return output as a Rust String. Handles CString conversion, calls `exec_cmd`, reads output, calls `free_result`.
+- `session_is_alive(api, session_id) -> bool` — check if a session exists and is active.
+
+### Output Detection
+
+Commands use a sentinel pattern: after sending the user's command, the framework sends `echo __AMATSUMARA_DONE__`. Output is collected until the sentinel line appears or the timeout expires. This is deterministic and avoids timing-based heuristics.
+
+### Writing a Session-Aware Post Module
+
+Use the `register_post_module!` macro instead of `register_module!`:
+
+```rust
+use amatsumara_api::*;
+use amatsumara_api::session_api;
+
+static VTABLE: ModuleVTable = ModuleVTable { get_info, init, destroy, check: None, run };
+static MODULE_INFO: ModuleInfo = /* ... */;
+
+// Generates: amatsumara_module_init, amatsumara_set_session_api, get_session_api()
+register_post_module!(MODULE_INFO, VTABLE);
+
+extern "C" fn run(_instance: *mut c_void, options_json: *const c_char) -> c_int {
+    let session_id: u32 = /* parse from options JSON */;
+    let api = get_session_api();  // AtomicPtr load
+
+    // Execute a command on the remote target
+    match unsafe { session_api::session_exec(api, session_id, "id", 5000) } {
+        Ok(output) => eprintln!("[+] {}", output),
+        Err(e) => eprintln!("[-] {}", e),
+    }
+    0
+}
+```
+
+### API Version
+
+`MODULE_API_VERSION` was bumped to 2 with this release. The loader accepts modules compiled against version 1 or 2 — existing `.so` files continue to load without recompilation. Version 2 signals that the Session Interaction API is available.
+
+---
+
 ## Utilities
 
 Utility modules are framework-level tools that support exploit workflows but are not exploits themselves. They do not target specific vulnerabilities or CVEs.

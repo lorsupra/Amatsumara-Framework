@@ -304,10 +304,6 @@ rm -rf target/
 
 ---
 
-## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for full release history.
-
 ### Future
 
 - Staged payloads (meterpreter-style agent)

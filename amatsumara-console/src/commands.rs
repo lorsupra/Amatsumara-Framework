@@ -260,17 +260,18 @@ impl<'a> CommandHandler<'a> {
     /// Show command - show various information
     pub fn cmd_show(&mut self, args: &[&str]) -> Result<()> {
         if args.is_empty() {
-            return Err(anyhow!("Usage: show <exploits|auxiliary|payloads|post|options|all>"));
+            return Err(anyhow!("Usage: show <exploits|auxiliary|utilities|payloads|post|options|all>"));
         }
 
         match args[0] {
             "options" => self.show_options(),
             "exploits" => self.show_modules_by_type("exploit"),
             "auxiliary" => self.show_modules_by_type("auxiliary"),
+            "utilities" => self.show_modules_by_type("utility"),
             "payloads" => self.show_modules_by_type("payload"),
             "post" => self.show_modules_by_type("post"),
             "all" => self.show_all_modules(),
-            _ => Err(anyhow!("Unknown show argument: {}. Try: exploits, auxiliary, payloads, post, options, all", args[0])),
+            _ => Err(anyhow!("Unknown show argument: {}. Try: exploits, auxiliary, utilities, payloads, post, options, all", args[0])),
         }
     }
 
@@ -443,6 +444,7 @@ impl<'a> CommandHandler<'a> {
     fn show_all_modules(&mut self) -> Result<()> {
         self.show_modules_by_type("exploit")?;
         self.show_modules_by_type("auxiliary")?;
+        self.show_modules_by_type("utility")?;
         self.show_modules_by_type("post")?;
         self.show_modules_by_type("payload")?;
         Ok(())
@@ -1100,7 +1102,7 @@ impl<'a> CommandHandler<'a> {
             ("unsetg <option>", "Unset a global option"),
             ("set autolhost <true|false>", "Toggle automatic LHOST detection"),
             ("", ""),
-            ("show <options|exploits|auxiliary|all>", "Display options or modules"),
+            ("show <options|exploits|auxiliary|utilities|all>", "Display options or modules"),
             ("options", "Show current module options"),
             ("", ""),
             ("run", "Execute the selected module (alias: strike)"),

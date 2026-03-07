@@ -48,6 +48,7 @@ impl ConsoleHelper {
             "options".to_string(),
             "exploits".to_string(),
             "auxiliary".to_string(),
+            "utilities".to_string(),
             "payloads".to_string(),
             "post".to_string(),
             "all".to_string(),

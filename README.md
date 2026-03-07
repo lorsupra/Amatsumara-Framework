@@ -20,8 +20,9 @@ Amatsumara is a penetration testing framework built for performance and safety. 
 
 | | Count |
 |---|---|
-| Exploit Modules | 7 |
+| Exploit Modules | 6 |
 | Auxiliary Modules | 18 |
+| Utility Modules | 1 |
 | Post-Exploitation Modules | 2 |
 | Payload Generators | 9 |
 
@@ -144,7 +145,7 @@ amatsumara > setg LHOST 10.0.0.5
 amatsumara > setg LPORT 4444
 
 amatsumara > use Multi Handler
-amatsumara Multi Handler (exploit) > run -j
+amatsumara Multi Handler (utility) > run -j
 [*] Job 1 started in background
 
 amatsumara > jobs
@@ -188,6 +189,7 @@ Amatsumara-Framework/
 |   +-- exploits/          # Exploit modules (.so + source)
 |   +-- auxiliary/scanner/ # Scanner modules
 |   +-- auxiliary/         # Standalone auxiliary modules
+|   +-- utilities/         # Utility modules (handlers, etc.)
 |   +-- post/              # Post-exploitation modules
 |   +-- payloads/singles/  # Payload generators
 +-- pattern-create/        # Buffer overflow pattern generator

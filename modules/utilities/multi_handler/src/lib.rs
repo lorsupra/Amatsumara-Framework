@@ -1,7 +1,7 @@
 ///! Multi Handler - Generic payload handler
 ///!
 ///! Listens for incoming connections from reverse payloads and creates sessions.
-///! Similar to Metasploit's exploit/multi/handler.
+///! Generic reverse payload handler, categorized as a utility.
 
 use amatsumara_api::*;
 use amatsumara_api::session_channel::register_session;
@@ -62,7 +62,7 @@ static MODULE_INFO: ModuleInfo = ModuleInfo {
         name: CString { ptr: NAME.as_ptr() as *const c_char, len: NAME.len() },
         description: CString { ptr: DESCRIPTION.as_ptr() as *const c_char, len: DESCRIPTION.len() },
         author: CString { ptr: AUTHOR.as_ptr() as *const c_char, len: AUTHOR.len() },
-        module_type: ModuleType::Exploit,
+        module_type: ModuleType::Utility,
         platforms: PlatformArray { ptr: PLATFORMS.as_ptr(), len: PLATFORMS.len() },
         archs: ArchArray { ptr: ARCHS.as_ptr(), len: ARCHS.len() },
         ranking: Ranking::Excellent,

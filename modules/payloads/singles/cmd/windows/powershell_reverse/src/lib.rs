@@ -123,7 +123,7 @@ $client.Close()
 
     println!("\n=== Option 3: Full Script (save as .ps1) ==={}", ps_script);
 
-    println!("\n[*] Ensure handler is listening: use exploit/multi/handler");
+    println!("\n[*] Ensure handler is listening: use utilities/multi_handler");
 
     0
 }

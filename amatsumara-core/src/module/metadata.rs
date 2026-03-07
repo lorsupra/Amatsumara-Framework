@@ -1,6 +1,6 @@
 ///! Module metadata definitions
 ///!
-///! Defines the metadata structure for Metasploit modules including
+///! Defines the metadata structure for Amatsumara modules including
 ///! name, description, authors, references, platforms, and other attributes.
 
 use serde::{Deserialize, Serialize};
@@ -199,7 +199,7 @@ pub struct ModuleMetadata {
     /// Module ranking
     pub ranking: Ranking,
 
-    /// License (usually BSD-3-Clause or MSF_LICENSE)
+    /// License (usually BSD-3-Clause)
     pub license: String,
 
     /// Disclosure date (ISO 8601 format: YYYY-MM-DD)

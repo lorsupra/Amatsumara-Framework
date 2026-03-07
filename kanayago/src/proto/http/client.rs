@@ -146,7 +146,7 @@ impl HttpClient {
         Ok(())
     }
 
-    /// Send an HTTP request (Metasploit-style send_request_cgi)
+    /// Send an HTTP request
     ///
     /// # Arguments
     /// * `opts` - Request options (uri, method, headers, data, etc.)

@@ -1,6 +1,6 @@
-///! Core module system for Metasploit
+///! Core module system for Amatsumara
 ///!
-///! This module defines the trait hierarchy for all Metasploit modules including
+///! This module defines the trait hierarchy for all Amatsumara modules including
 ///! exploits, auxiliary, post-exploitation, payloads, encoders, and evasion modules.
 
 pub mod metadata;
@@ -46,7 +46,7 @@ impl Default for Context {
     }
 }
 
-/// Base trait for all Metasploit modules
+/// Base trait for all Amatsumara modules
 #[async_trait]
 pub trait Module: Send + Sync {
     /// Get module metadata

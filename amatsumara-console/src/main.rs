@@ -31,6 +31,7 @@ async fn main() -> Result<()> {
     let mut auxiliary_count = 0;
     let mut post_count = 0;
     let mut payload_count = 0;
+    let mut utility_count = 0;
 
     // Build module map indexed by name and count by type
     let mut loaded_modules = std::collections::HashMap::new();
@@ -43,6 +44,7 @@ async fn main() -> Result<()> {
             ModuleType::Auxiliary => auxiliary_count += 1,
             ModuleType::Post => post_count += 1,
             ModuleType::Payload => payload_count += 1,
+            ModuleType::Utility => utility_count += 1,
             _ => {}
         }
 
@@ -50,7 +52,7 @@ async fn main() -> Result<()> {
     }
 
     // Display banner with actual counts
-    banner::display_banner_with_counts(exploit_count, auxiliary_count, post_count, payload_count);
+    banner::display_banner_with_counts(exploit_count, auxiliary_count, post_count, payload_count, utility_count);
 
     println!();
 

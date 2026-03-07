@@ -51,7 +51,7 @@ The module starts three listeners (LDAP on SRVPORT, HTTP class server on 8888, r
 **References**
 - NVD: https://nvd.nist.gov/vuln/detail/CVE-2021-44228
 - Apache Advisory: https://logging.apache.org/log4j/2.x/security.html
-- Original MSF module by p0rz9, wvu
+- Original module by p0rz9, wvu
 
 ---
 
@@ -131,41 +131,6 @@ The `check` command performs SMB negotiation and sends a PeekNamedPipe transacti
 - NVD: https://nvd.nist.gov/vuln/detail/CVE-2017-0143
 - MS Bulletin: https://technet.microsoft.com/en-us/library/security/ms17-010.aspx
 - Original: zerosum0x0/eternalblue-doublepulsar
-
----
-
-### Multi Handler — `multi_handler`
-> N/A | N/A | Generic payload handler
-
-**Summary**
-A generic reverse payload listener that binds a port and waits for incoming connections from any reverse shell payload. When a connection is received, the handler verifies shell access by sending `id` and registers the connection as an interactive session. Functions identically to Metasploit's `exploit/multi/handler`.
-
-**Options**
-| Option | Default | Required | Description |
-|--------|---------|----------|-------------|
-| LHOST | 0.0.0.0 | Yes | Listen address (0.0.0.0 for all interfaces) |
-| LPORT | 4444 | Yes | Listen port |
-| TIMEOUT | 0 | No | Seconds to wait for connection (0 = wait forever) |
-
-**Usage**
-```
-use exploits/multi_handler
-set LHOST 0.0.0.0
-set LPORT 4444
-run -j
-```
-
-**Expected Output**
-The handler prints `[*] Starting handler on 0.0.0.0:4444` and `[*] Waiting for connections...`. When a reverse shell connects: `[+] Connection received from <IP>:<PORT>`, shell verification output (e.g., `uid=0(root)`), and `[+] Session created`. The `-j` flag runs the handler as a background job.
-
-**Caveats**
-- No `check` function — this is a listener, not an exploit.
-- TIMEOUT=0 blocks indefinitely; use `-j` for background operation.
-- Shell verification sends `id\n` which may produce unexpected output on non-Unix shells (e.g., Windows cmd.exe).
-- Accepts exactly one connection per invocation; restart or re-run for additional sessions.
-
-**References**
-- Conceptually equivalent to Metasploit's `exploit/multi/handler`
 
 ---
 
@@ -897,3 +862,42 @@ Prints the VNC protocol version string (e.g., `RFB 003.008`). No authentication 
 
 **References**
 - N/A — service enumeration tool
+
+---
+
+## Utilities
+
+Utility modules are framework-level tools that support exploit workflows but are not exploits themselves. They do not target specific vulnerabilities or CVEs.
+
+### Multi Handler — `multi_handler`
+> N/A | N/A | Generic payload handler
+
+**Summary**
+A generic reverse payload listener that binds a port and waits for incoming connections from any reverse shell payload. When a connection is received, the handler verifies shell access by sending `id` and registers the connection as an interactive session. Typically used alongside exploit modules that deliver a reverse shell payload but do not include a built-in listener.
+
+**Options**
+| Option | Default | Required | Description |
+|--------|---------|----------|-------------|
+| LHOST | 0.0.0.0 | Yes | Listen address (0.0.0.0 for all interfaces) |
+| LPORT | 4444 | Yes | Listen port |
+| TIMEOUT | 0 | No | Seconds to wait for connection (0 = wait forever) |
+
+**Usage**
+```
+use utilities/multi_handler
+set LHOST 0.0.0.0
+set LPORT 4444
+run -j
+```
+
+**Expected Output**
+The handler prints `[*] Starting handler on 0.0.0.0:4444` and `[*] Waiting for connections...`. When a reverse shell connects: `[+] Connection received from <IP>:<PORT>`, shell verification output (e.g., `uid=0(root)`), and `[+] Session created`. The `-j` flag runs the handler as a background job.
+
+**Caveats**
+- No `check` function — this is a listener, not an exploit.
+- TIMEOUT=0 blocks indefinitely; use `-j` for background operation.
+- Shell verification sends `id\n` which may produce unexpected output on non-Unix shells (e.g., Windows cmd.exe).
+- Accepts exactly one connection per invocation; restart or re-run for additional sessions.
+
+**References**
+- N/A — framework utility

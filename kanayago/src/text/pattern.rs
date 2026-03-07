@@ -24,7 +24,7 @@
 /// assert_eq!(pattern.len(), 100);
 /// ```
 pub fn create(length: usize, sets: Option<&[&str]>) -> String {
-    // Default character sets matching Metasploit's behavior
+    // Default character sets
     let default_sets = vec!["ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz", "0123456789"];
 
     let char_sets: Vec<&str> = sets.unwrap_or(&default_sets).to_vec();

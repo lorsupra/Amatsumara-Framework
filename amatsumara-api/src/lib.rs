@@ -20,6 +20,7 @@ pub enum ModuleType {
     Payload = 3,
     Encoder = 4,
     Evasion = 5,
+    Utility = 6,
 }
 
 /// Platform types

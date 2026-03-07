@@ -91,6 +91,7 @@ impl ConsoleContext {
                 amatsumara_core::ModuleType::Auxiliary => return "auxiliary".to_string(),
                 amatsumara_core::ModuleType::Post => return "post".to_string(),
                 amatsumara_core::ModuleType::Payload => return "payload".to_string(),
+                amatsumara_core::ModuleType::Utility => return "utility".to_string(),
                 _ => {}
             }
         }

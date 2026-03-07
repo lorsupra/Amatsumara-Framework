@@ -1,10 +1,10 @@
 use colored::Colorize;
 
 pub fn display_banner() {
-    display_banner_with_counts(0, 0, 0, 0);
+    display_banner_with_counts(0, 0, 0, 0, 0);
 }
 
-pub fn display_banner_with_counts(exploits: usize, auxiliary: usize, post: usize, payloads: usize) {
+pub fn display_banner_with_counts(exploits: usize, auxiliary: usize, post: usize, payloads: usize, utilities: usize) {
     // Gradient from neon green to teal/cyan
     let line1 = " ▄▄▄       ███▄ ▄███▓ ▄▄▄     ▄▄▄█████▓  ██████  █    ██  ███▄ ▄███▓ ▄▄▄       ██▀███   ▄▄▄";
     let line2 = "▒████▄    ▓██▒▀█▀ ██▒▒████▄   ▓  ██▒ ▓▒▒██    ▒  ██  ▓██▒▓██▒▀█▀ ██▒▒████▄    ▓██ ▒ ██▒▒████▄";
@@ -34,5 +34,6 @@ pub fn display_banner_with_counts(exploits: usize, auxiliary: usize, post: usize
     println!("              + -- --=[ {} auxiliary modules ]", auxiliary.to_string().truecolor(0, 178, 148));
     println!("              + -- --=[ {} post modules ]", post.to_string().truecolor(0, 178, 148));
     println!("              + -- --=[ {} payloads ]", payloads.to_string().truecolor(0, 178, 148));
+    println!("              + -- --=[ {} utilities ]", utilities.to_string().truecolor(0, 178, 148));
     println!();
 }

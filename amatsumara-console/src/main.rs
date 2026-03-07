@@ -153,80 +153,80 @@ async fn execute_command(ctx: &mut ConsoleContext, completer_state: &Arc<RwLock<
     let command = parts[0];
     let args = &parts[1..];
 
-    let mut handler = CommandHandler::new(ctx);
-
     match command {
         "use" => {
-            handler.cmd_use(args)?;
+            CommandHandler::new(ctx).cmd_use(args)?;
             update_completer_options(ctx, completer_state);
+            ctx.auto_set_lhost();
             Ok(false)
         }
         "set" | "forge" => {
-            handler.cmd_set(args)?;
+            CommandHandler::new(ctx).cmd_set(args)?;
             Ok(false)
         }
         "unset" => {
-            handler.cmd_unset(args)?;
+            CommandHandler::new(ctx).cmd_unset(args)?;
             Ok(false)
         }
         "setg" => {
-            handler.cmd_setg(args)?;
+            CommandHandler::new(ctx).cmd_setg(args)?;
             Ok(false)
         }
         "unsetg" => {
-            handler.cmd_unsetg(args)?;
+            CommandHandler::new(ctx).cmd_unsetg(args)?;
             Ok(false)
         }
         "show" => {
-            handler.cmd_show(args)?;
+            CommandHandler::new(ctx).cmd_show(args)?;
             Ok(false)
         }
         "info" => {
-            handler.cmd_info(args)?;
+            CommandHandler::new(ctx).cmd_info(args)?;
             Ok(false)
         }
         "search" => {
-            handler.cmd_search(args)?;
+            CommandHandler::new(ctx).cmd_search(args)?;
             Ok(false)
         }
         "back" => {
-            handler.cmd_back()?;
+            CommandHandler::new(ctx).cmd_back()?;
             update_completer_options(ctx, completer_state);
             Ok(false)
         }
         "options" => {
-            handler.cmd_options()?;
+            CommandHandler::new(ctx).cmd_options()?;
             Ok(false)
         }
         "run" | "strike" => {
+            ctx.auto_set_lhost();
             let background = args.contains(&"-j");
-            handler.cmd_run(background).await?;
+            CommandHandler::new(ctx).cmd_run(background).await?;
             Ok(false)
         }
         "jobs" => {
-            handler.cmd_jobs(args)?;
+            CommandHandler::new(ctx).cmd_jobs(args)?;
             Ok(false)
         }
         "kill" => {
-            handler.cmd_kill(args)?;
+            CommandHandler::new(ctx).cmd_kill(args)?;
             Ok(false)
         }
         "check" => {
-            handler.cmd_check().await?;
+            CommandHandler::new(ctx).cmd_check().await?;
             Ok(false)
         }
         "sessions" => {
             if args.len() > 1 && args[0] == "-i" {
-                handler.cmd_interact(&args[1..]).await?;
+                CommandHandler::new(ctx).cmd_interact(&args[1..]).await?;
             } else if args.len() > 1 && args[0] == "-k" {
-                handler.cmd_kill_session(&args[1..])?;
+                CommandHandler::new(ctx).cmd_kill_session(&args[1..])?;
             } else {
-                handler.cmd_sessions(args)?;
+                CommandHandler::new(ctx).cmd_sessions(args)?;
             }
             Ok(false)
         }
         "help" | "?" => {
-            handler.cmd_help()?;
+            CommandHandler::new(ctx).cmd_help()?;
             Ok(false)
         }
         "exit" | "quit" => {

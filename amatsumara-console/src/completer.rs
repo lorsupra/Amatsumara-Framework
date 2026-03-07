@@ -127,7 +127,7 @@ impl Completer for ConsoleHelper {
 
                     let state = self.state.read().unwrap();
                     let partial_upper = partial.to_uppercase();
-                    let candidates: Vec<Pair> = state.current_module_options
+                    let mut candidates: Vec<Pair> = state.current_module_options
                         .iter()
                         .filter(|opt| opt.starts_with(&partial_upper))
                         .map(|opt| Pair {
@@ -135,6 +135,15 @@ impl Completer for ConsoleHelper {
                             replacement: format!("{} ", opt),
                         })
                         .collect();
+                    // Add AUTOLHOST as a completable option for set/forge
+                    if command == "set" || command == "forge" {
+                        if "AUTOLHOST".starts_with(&partial_upper) {
+                            candidates.push(Pair {
+                                display: "AUTOLHOST".to_string(),
+                                replacement: "AUTOLHOST ".to_string(),
+                            });
+                        }
+                    }
                     Ok((start_pos, candidates))
                 } else {
                     Ok((pos, vec![]))

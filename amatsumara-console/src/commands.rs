@@ -4,6 +4,79 @@ use crate::context::ConsoleContext;
 use std::ffi::CString;
 use chrono::{DateTime, Local};
 
+fn term_width() -> usize {
+    terminal_size::terminal_size()
+        .map(|(w, _)| w.0 as usize)
+        .unwrap_or(120)
+}
+
+/// Word-wrap `text` to fit in `max_width` columns. Returns lines.
+fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
+    if max_width == 0 || text.len() <= max_width {
+        return vec![text.to_string()];
+    }
+    let mut lines = Vec::new();
+    let mut current = String::new();
+    for word in text.split_whitespace() {
+        if current.is_empty() {
+            current = word.to_string();
+        } else if current.len() + 1 + word.len() <= max_width {
+            current.push(' ');
+            current.push_str(word);
+        } else {
+            lines.push(current);
+            current = word.to_string();
+        }
+    }
+    if !current.is_empty() {
+        lines.push(current);
+    }
+    if lines.is_empty() {
+        lines.push(String::new());
+    }
+    lines
+}
+
+/// Wrap a module path at `/` boundaries to fit in `max_width` columns.
+fn wrap_path(path: &str, max_width: usize) -> Vec<String> {
+    if max_width == 0 || path.len() <= max_width {
+        return vec![path.to_string()];
+    }
+    let parts: Vec<&str> = path.split('/').collect();
+    let mut lines = Vec::new();
+    let mut current = String::new();
+    for (i, part) in parts.iter().enumerate() {
+        let sep = if i > 0 { "/" } else { "" };
+        let candidate = format!("{}{}{}", current, sep, part);
+        if candidate.len() <= max_width || current.is_empty() {
+            current = candidate;
+        } else {
+            current.push('/');
+            lines.push(current);
+            current = part.to_string();
+        }
+    }
+    if !current.is_empty() {
+        lines.push(current);
+    }
+    if lines.is_empty() {
+        lines.push(String::new());
+    }
+    lines
+}
+
+/// Wrap a module name: use word boundaries if it has spaces, path boundaries otherwise.
+fn wrap_name(name: &str, max_width: usize) -> Vec<String> {
+    if max_width == 0 || name.len() <= max_width {
+        return vec![name.to_string()];
+    }
+    if name.contains(' ') {
+        wrap_text(name, max_width)
+    } else {
+        wrap_path(name, max_width)
+    }
+}
+
 pub struct CommandHandler<'a> {
     ctx: &'a mut ConsoleContext,
 }
@@ -86,18 +159,39 @@ impl<'a> CommandHandler<'a> {
         }
     }
 
-    /// Set command - set a module option
+    /// Set command - set a module option (or global setting like autolhost)
     pub fn cmd_set(&mut self, args: &[&str]) -> Result<()> {
         if args.len() < 2 {
             return Err(anyhow!("Usage: set <option> <value>"));
+        }
+
+        let option = args[0].to_uppercase();
+        let value = args[1..].join(" ");
+
+        // Handle AutoLHOST as a global toggle (works without a module selected)
+        if option == "AUTOLHOST" {
+            match value.to_lowercase().as_str() {
+                "true" | "1" | "yes" => {
+                    self.ctx.auto_lhost = true;
+                    println!("{} => {}", "AutoLHOST".bright_yellow(), "true".bright_white());
+                }
+                "false" | "0" | "no" => {
+                    self.ctx.auto_lhost = false;
+                    println!("{} => {}", "AutoLHOST".bright_yellow(), "false".bright_white());
+                }
+                _ => return Err(anyhow!("Invalid value for AutoLHOST. Use true/false.")),
+            }
+            return Ok(());
         }
 
         if !self.ctx.has_module() {
             return Err(anyhow!("No module selected. Use 'use <module>' first."));
         }
 
-        let option = args[0].to_uppercase();
-        let value = args[1..].join(" ");
+        // Track manual LHOST set
+        if option == "LHOST" {
+            self.ctx.lhost_manually_set = true;
+        }
 
         println!("{} => {}", option.bright_yellow(), value.bright_white());
         self.ctx.set_option(option, value);
@@ -134,6 +228,11 @@ impl<'a> CommandHandler<'a> {
 
         let option = args[0].to_uppercase();
         let value = args[1..].join(" ");
+
+        // Track manual LHOST set
+        if option == "LHOST" {
+            self.ctx.lhost_manually_set = true;
+        }
 
         println!("{} {} => {}", "Global".bright_magenta(), option.bright_yellow(), value.bright_white());
         self.ctx.set_global_option(option, value);
@@ -258,12 +357,16 @@ impl<'a> CommandHandler<'a> {
             }
         }
 
-        // Show global options if any are set
-        if !self.ctx.global_options.is_empty() {
-            println!();
-            println!("{}", "Global options:".bright_magenta().bold());
-            println!();
+        // Show global settings (AutoLHOST + global options)
+        println!();
+        println!("{}", "Global settings:".bright_magenta().bold());
+        println!();
+        println!("  {:<20} {}",
+            "AutoLHOST".bright_yellow(),
+            if self.ctx.auto_lhost { "true".bright_white() } else { "false".bright_white() }
+        );
 
+        if !self.ctx.global_options.is_empty() {
             for (key, value) in &self.ctx.global_options {
                 println!("  {:<20} {}",
                     key.bright_yellow(),
@@ -295,8 +398,12 @@ impl<'a> CommandHandler<'a> {
         // Sort by name
         modules.sort_by(|a, b| a.0.cmp(&b.0));
 
-        // Add padding for spacing
-        let name_width = max_name_len + 2;
+        let tw = term_width();
+        let indent = 2usize;
+        // Cap name column to half the terminal width
+        let name_width = (max_name_len + 2).min(tw / 2);
+        let left_total = indent + name_width;
+        let desc_width = tw.saturating_sub(left_total).max(20);
 
         println!("\n{} modules:", module_type.bright_cyan().bold());
         println!();
@@ -312,11 +419,20 @@ impl<'a> CommandHandler<'a> {
         if modules.is_empty() {
             println!("  {}", "No modules loaded yet".bright_black());
         } else {
+            // Usable content width for the name column (minus 2 for gap)
+            let name_content = name_width.saturating_sub(2);
             for (name, desc) in &modules {
-                println!("  {}{}",
-                    format!("{:<width$}", name, width = name_width).bright_green(),
-                    desc
-                );
+                let name_lines = wrap_name(name, name_content);
+                let desc_lines = wrap_text(desc, desc_width);
+                let row_count = name_lines.len().max(desc_lines.len());
+                for i in 0..row_count {
+                    let n = name_lines.get(i).map(|s| s.as_str()).unwrap_or("");
+                    let d = desc_lines.get(i).map(|s| s.as_str()).unwrap_or("");
+                    println!("  {}{}",
+                        format!("{:<width$}", n, width = name_width).bright_green(),
+                        d
+                    );
+                }
             }
         }
         println!();
@@ -455,8 +571,12 @@ impl<'a> CommandHandler<'a> {
         matches.sort_by(|a, b| a.0.cmp(&b.0));
 
         // Calculate column widths (index is 5 chars, then name with padding)
+        let tw = term_width();
+        let indent = 2usize;
         let idx_width = 5;
-        let name_width = max_name_len + 2;
+        let name_width = (max_name_len + 2).min(tw / 2);
+        let left_total = indent + idx_width + name_width;
+        let desc_width = tw.saturating_sub(left_total).max(20);
 
         println!("\n{} for: {}", "Searching".bright_cyan(),
             if search_term.is_empty() { "*".to_string() } else { search_term.clone() }.bright_yellow());
@@ -478,16 +598,33 @@ impl<'a> CommandHandler<'a> {
         } else {
             // Clear and store results for numbered selection
             self.ctx.last_search_results.clear();
+            let name_content = name_width.saturating_sub(2);
+            let idx_pad = " ".repeat(idx_width);
 
             for (idx, (name, desc)) in matches.iter().enumerate() {
                 // Store module name for numbered selection
                 self.ctx.last_search_results.push(name.clone());
 
-                println!("  {}{}{}",
-                    format!("{:<width$}", idx, width = idx_width).bright_blue(),
-                    format!("{:<width$}", name, width = name_width).bright_green(),
-                    desc
-                );
+                let name_lines = wrap_name(name, name_content);
+                let desc_lines = wrap_text(desc, desc_width);
+                let row_count = name_lines.len().max(desc_lines.len());
+                for i in 0..row_count {
+                    let n = name_lines.get(i).map(|s| s.as_str()).unwrap_or("");
+                    let d = desc_lines.get(i).map(|s| s.as_str()).unwrap_or("");
+                    if i == 0 {
+                        println!("  {}{}{}",
+                            format!("{:<width$}", idx, width = idx_width).bright_blue(),
+                            format!("{:<width$}", n, width = name_width).bright_green(),
+                            d
+                        );
+                    } else {
+                        println!("  {}{}{}",
+                            &idx_pad,
+                            format!("{:<width$}", n, width = name_width).bright_green(),
+                            d
+                        );
+                    }
+                }
             }
         }
 
@@ -961,6 +1098,7 @@ impl<'a> CommandHandler<'a> {
             ("unset <option>", "Unset a module option"),
             ("setg <option> <value>", "Set a global option"),
             ("unsetg <option>", "Unset a global option"),
+            ("set autolhost <true|false>", "Toggle automatic LHOST detection"),
             ("", ""),
             ("show <options|exploits|auxiliary|all>", "Display options or modules"),
             ("options", "Show current module options"),

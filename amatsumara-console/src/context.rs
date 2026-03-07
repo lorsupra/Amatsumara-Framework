@@ -1,6 +1,8 @@
 use std::collections::HashMap;
+use std::net::IpAddr;
 use colored::Colorize;
 use amatsumara_core::{ModuleRegistry, DynamicModule, SessionManager};
+use nix::ifaddrs::getifaddrs;
 use tokio::task::JoinHandle;
 
 /// Background job tracking
@@ -40,6 +42,12 @@ pub struct ConsoleContext {
 
     /// Next job ID
     pub next_job_id: u32,
+
+    /// Whether AutoLHOST is enabled (default: true)
+    pub auto_lhost: bool,
+
+    /// Whether LHOST was manually set by the user this session
+    pub lhost_manually_set: bool,
 }
 
 impl ConsoleContext {
@@ -54,6 +62,8 @@ impl ConsoleContext {
             last_search_results: Vec::new(),
             jobs: Vec::new(),
             next_job_id: 1,
+            auto_lhost: true,
+            lhost_manually_set: false,
         }
     }
 
@@ -138,6 +148,56 @@ impl ConsoleContext {
             self.loaded_modules.get(module_name)
         } else {
             None
+        }
+    }
+
+    /// Detect LHOST from network interfaces.
+    /// Priority: tun0 > tap0 > first non-loopback interface with IPv4.
+    pub fn detect_lhost() -> Option<(String, String)> {
+        let ifaddrs = getifaddrs().ok()?;
+
+        let mut tun0_ip = None;
+        let mut tap0_ip = None;
+        let mut fallback_ip = None;
+
+        for ifaddr in ifaddrs {
+            let name = &ifaddr.interface_name;
+            if let Some(addr) = ifaddr.address {
+                if let Some(sockaddr) = addr.as_sockaddr_in() {
+                    let ip = IpAddr::V4(std::net::Ipv4Addr::from(sockaddr.ip()));
+                    match name.as_str() {
+                        "tun0" => { tun0_ip = Some((ip.to_string(), name.clone())); }
+                        "tap0" => { tap0_ip = Some((ip.to_string(), name.clone())); }
+                        n if n != "lo" && fallback_ip.is_none() => {
+                            fallback_ip = Some((ip.to_string(), name.clone()));
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        tun0_ip.or(tap0_ip).or(fallback_ip)
+    }
+
+    /// Auto-set LHOST if AutoLHOST is enabled and LHOST wasn't manually set.
+    pub fn auto_set_lhost(&mut self) {
+        if !self.auto_lhost || self.lhost_manually_set {
+            return;
+        }
+
+        // Check if LHOST is already set in module or global options
+        if self.module_options.contains_key("LHOST") || self.global_options.contains_key("LHOST") {
+            return;
+        }
+
+        if let Some((ip, iface)) = Self::detect_lhost() {
+            println!("{} LHOST set to {} ({})",
+                "[*] AutoLHOST:".bright_blue(),
+                ip.bright_white(),
+                iface.bright_cyan()
+            );
+            self.global_options.insert("LHOST".to_string(), ip);
         }
     }
 }

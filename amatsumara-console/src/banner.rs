@@ -29,7 +29,7 @@ pub fn display_banner_with_counts(exploits: usize, auxiliary: usize, post: usize
     println!();
     println!("            {} Penetration Testing Framework", "Amatsumara".truecolor(0, 188, 242).bold());
     println!();
-    println!("                   =[ {} {}]", "Amatsumara Framework".bright_white(), "v2.3.0".truecolor(0, 188, 242));
+    println!("                   =[ {} {}]", "Amatsumara Framework".bright_white(), "v2.4.0".truecolor(0, 188, 242));
     println!("              + -- --=[ {} exploits ]", exploits.to_string().truecolor(0, 178, 148));
     println!("              + -- --=[ {} auxiliary modules ]", auxiliary.to_string().truecolor(0, 178, 148));
     println!("              + -- --=[ {} post modules ]", post.to_string().truecolor(0, 178, 148));

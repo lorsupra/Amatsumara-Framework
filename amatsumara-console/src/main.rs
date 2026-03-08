@@ -245,7 +245,13 @@ async fn execute_command(ctx: &mut ConsoleContext, completer_state: &Arc<RwLock<
             Ok(false)
         }
         "jobs" => {
-            CommandHandler::new(ctx).cmd_jobs(args)?;
+            if args.len() > 1 && args[0] == "-i" {
+                CommandHandler::new(ctx).cmd_jobs_interact(&args[1..]).await?;
+            } else if args.len() > 1 && args[0] == "-k" {
+                CommandHandler::new(ctx).cmd_kill(&args[1..])?;
+            } else {
+                CommandHandler::new(ctx).cmd_jobs(args)?;
+            }
             Ok(false)
         }
         "kill" => {

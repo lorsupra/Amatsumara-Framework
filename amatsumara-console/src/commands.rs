@@ -794,6 +794,80 @@ impl<'a> CommandHandler<'a> {
         Ok(())
     }
 
+    /// Jobs interact - foreground a background job and block until it completes
+    pub async fn cmd_jobs_interact(&mut self, args: &[&str]) -> Result<()> {
+        if args.is_empty() {
+            return Err(anyhow!("Usage: jobs -i <job_id>"));
+        }
+
+        let job_id: u32 = args[0].parse()
+            .map_err(|_| anyhow!("Invalid job ID"))?;
+
+        let pos = self.ctx.jobs.iter().position(|j| j.id == job_id)
+            .ok_or_else(|| anyhow!("Job {} not found", job_id))?;
+
+        let job = self.ctx.jobs.remove(pos);
+
+        if job.handle.is_finished() {
+            println!("{}", format!("[*] Job {} ({}) has already completed", job_id, job.name).bright_blue());
+            return Ok(());
+        }
+
+        println!("{}", format!("[*] Foregrounding job {}: {}", job_id, job.name).bright_blue());
+        println!("{}", "[*] Waiting for job to complete...".bright_blue());
+
+        match job.handle.await {
+            Ok(code) => {
+                if code == 0 {
+                    println!("{}", format!("[+] Job {} completed successfully", job_id).bright_green());
+                } else {
+                    println!("{}", format!("[-] Job {} exited with code {}", job_id, code).bright_red());
+                }
+            }
+            Err(e) if e.is_cancelled() => {
+                println!("{}", format!("[*] Job {} was cancelled", job_id).bright_yellow());
+            }
+            Err(e) => {
+                println!("{}", format!("[-] Job {} failed: {}", job_id, e).bright_red());
+            }
+        }
+
+        // Pick up any sessions the job may have registered
+        let pending_sessions = amatsumara_core::take_pending_sessions();
+        for pending in pending_sessions {
+            if pending.stream.set_nonblocking(true).is_err() {
+                continue;
+            }
+
+            let tokio_stream = match tokio::net::TcpStream::from_std(pending.stream) {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+
+            let session_id = self.ctx.session_manager.next_id();
+            match amatsumara_core::Session::from_tcp(
+                session_id,
+                amatsumara_core::SessionKind::Shell,
+                tokio_stream,
+                pending.description,
+            ).await {
+                Ok(mut session) => {
+                    if !pending.remote_host.is_empty() {
+                        session.info.remote_host = pending.remote_host.clone();
+                        session.info.remote_port = pending.remote_port;
+                    }
+                    self.ctx.session_manager.register(session);
+                    println!("{}", format!("[+] Session {} opened ({}:{})", session_id, pending.remote_host, pending.remote_port).bright_green().bold());
+                }
+                Err(e) => {
+                    eprintln!("{}", format!("[-] Failed to create session: {}", e).bright_red());
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     /// Kill command - kill a background job
     pub fn cmd_kill(&mut self, args: &[&str]) -> Result<()> {
         if args.is_empty() {
@@ -1233,6 +1307,8 @@ impl<'a> CommandHandler<'a> {
             ("sessions -k all", "Kill all sessions"),
             ("", ""),
             ("jobs", "List background jobs"),
+            ("jobs -i <id>", "Foreground a background job"),
+            ("jobs -k <id>", "Kill a background job"),
             ("kill <id>", "Kill a background job"),
             ("", ""),
             ("help", "Show this help message (alias: ?)"),

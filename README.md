@@ -103,6 +103,8 @@ cargo build --release
 | `sessions -i <id>` | Interact with a session. |
 | `sessions -k <id\|all>` | Kill session(s). |
 | `jobs` | List background jobs. |
+| `jobs -i <id>` | Foreground a background job (block until it completes). |
+| `jobs -k <id>` | Kill a background job. |
 | `kill <id>` | Kill a background job. |
 
 Inside a session: `background` to return to console, `exit` to close.

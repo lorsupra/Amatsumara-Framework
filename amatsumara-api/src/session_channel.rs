@@ -68,7 +68,11 @@ pub fn register_session(stream: TcpStream, remote_host: String, remote_port: u16
 
     // Write to file in IPC directory
     let dir = get_session_dir();
-    let filename = format!("session_{}.json", std::process::id());
+    let filename = format!("session_{}_{}.json", std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0));
     let filepath = dir.join(&filename);
 
     match serde_json::to_string(&session_data) {

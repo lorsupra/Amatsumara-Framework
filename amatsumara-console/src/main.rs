@@ -82,6 +82,39 @@ async fn main() -> Result<()> {
 
     // Main REPL loop
     loop {
+        // Poll for sessions registered by background jobs (e.g. multi_handler)
+        let pending_sessions = amatsumara_core::take_pending_sessions();
+        for pending in pending_sessions {
+            if pending.stream.set_nonblocking(true).is_err() {
+                continue; // stale fd from a previous process
+            }
+
+            let tokio_stream = match tokio::net::TcpStream::from_std(pending.stream) {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+
+            let session_id = ctx.session_manager.next_id();
+            match amatsumara_core::Session::from_tcp(
+                session_id,
+                amatsumara_core::SessionKind::Shell,
+                tokio_stream,
+                pending.description,
+            ).await {
+                Ok(mut session) => {
+                    if !pending.remote_host.is_empty() {
+                        session.info.remote_host = pending.remote_host.clone();
+                        session.info.remote_port = pending.remote_port;
+                    }
+                    ctx.session_manager.register(session);
+                    println!("{}", format!("[+] Session {} opened ({}:{})", session_id, pending.remote_host, pending.remote_port).bright_green().bold());
+                }
+                Err(e) => {
+                    eprintln!("{}", format!("[-] Failed to create session: {}", e).bright_red());
+                }
+            }
+        }
+
         let prompt = ctx.get_prompt();
 
         match rl.readline(&prompt) {

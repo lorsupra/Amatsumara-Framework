@@ -13,7 +13,7 @@ dependencies = [
 
 [[package]]
 name = "amatsumara-api"
-version = "2.4.0"
+version = "2.5.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -21,7 +21,7 @@ dependencies = [
 
 [[package]]
 name = "amatsumara-console"
-version = "2.4.0"
+version = "2.5.0"
 dependencies = [
  "amatsumara-core",
  "anyhow",
@@ -37,7 +37,7 @@ dependencies = [
 
 [[package]]
 name = "amatsumara-core"
-version = "2.4.0"
+version = "2.5.0"
 dependencies = [
  "amatsumara-api",
  "anyhow",
@@ -788,7 +788,7 @@ dependencies = [
 
 [[package]]
 name = "kanayago"
-version = "2.4.0"
+version = "2.5.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1028,7 +1028,7 @@ dependencies = [
 
 [[package]]
 name = "pattern-create"
-version = "2.4.0"
+version = "2.5.0"
 dependencies = [
  "clap",
  "kanayago",
@@ -1036,7 +1036,7 @@ dependencies = [
 
 [[package]]
 name = "pattern-offset"
-version = "2.4.0"
+version = "2.5.0"
 dependencies = [
  "clap",
  "kanayago",

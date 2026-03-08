@@ -21,7 +21,7 @@ Amatsumara is a penetration testing framework built for performance and safety. 
 | | Count |
 |---|---|
 | Exploit Modules | 6 |
-| Auxiliary Modules | 4 |
+| Auxiliary Modules | 5 |
 | Utility Modules | 1 |
 | Post-Exploitation Modules | 1 |
 | Payload Generators | 2 |

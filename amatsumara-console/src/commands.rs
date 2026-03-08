@@ -919,9 +919,15 @@ impl<'a> CommandHandler<'a> {
                         tokio_stream,
                         pending.description
                     ).await {
-                        Ok(session) => {
+                        Ok(mut session) => {
+                            // Use PendingSession host/port (correct for both
+                            // reverse shells and bridged sessions like SSH)
+                            if !pending.remote_host.is_empty() {
+                                session.info.remote_host = pending.remote_host.clone();
+                                session.info.remote_port = pending.remote_port;
+                            }
                             self.ctx.session_manager.register(session);
-                            println!("{}", format!("[+] Session {} opened", session_id).bright_green().bold());
+                            println!("{}", format!("[+] Session {} opened ({}:{})", session_id, pending.remote_host, pending.remote_port).bright_green().bold());
                         }
                         Err(e) => {
                             eprintln!("{}", format!("[-] Failed to create session: {}", e).bright_red());
